@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Overlap" width="220">
+</p>
+
 # Overlap
 
 **All rosters, calendars and events in one clear overview.**
