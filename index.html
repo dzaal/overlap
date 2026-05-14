@@ -257,6 +257,9 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
         document.getElementById('bD').classList.add('on');
         document.getElementById('bW').classList.remove('on');
         render(0);
+        // MutationObserver won't fire when already in day view (class unchanged),
+        // so rebuild the strip immediately to update the selected-day highlight.
+        buildDayStrip();
       });
     });
   }
