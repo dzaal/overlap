@@ -218,21 +218,22 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
   inject();
 })();
 
-// ── Day-view: 16:9 width on desktop ──────────────────────────────────────────
-// overlap.js sizes the day view to an A4 ratio. Override to use 16:9 instead,
-// but only on screens wider than 600 px (mobile stays full-width).
+// ── Day-view: 9:16 portrait width on desktop ─────────────────────────────────
+// Width = full available height × (9/16) so the panel looks like a tall portrait
+// rectangle. The calendar fills 100 % of the viewport height; if the content is
+// taller it scrolls naturally. Mobile (≤ 600 px) keeps full-width behaviour.
 (function () {
   if (typeof updateDayViewMetrics !== 'function') return;
   var _orig = updateDayViewMetrics;
   updateDayViewMetrics = function (hourCount) {
     _orig(hourCount);
     if (vm !== 'day' || window._printMaxCols) return;
-    if (window.innerWidth <= 600) return; // keep mobile full-width
+    if (window.innerWidth <= 600) return;
     var headerH = (document.querySelector('header') || {}).offsetHeight || 64;
     var stripH  = (document.getElementById('weekStrip') || {}).offsetHeight || 0;
     var usableH = window.innerHeight - headerH - stripH;
-    var target  = Math.floor(usableH * 16 / 9);
-    var bounded = Math.max(480, Math.min(target, window.innerWidth - 40));
+    var target  = Math.floor(usableH * 9 / 16);
+    var bounded = Math.max(320, Math.min(target, window.innerWidth - 40));
     document.body.style.setProperty('--day-view-width', bounded + 'px');
   };
 })();
@@ -356,9 +357,11 @@ body.view-day #weekStrip .ws-dot {
 }
 body.view-day #weekStrip .ws-dot.has-ev { background: rgba(255,255,255,.5); }
 
-/* ── Day-view: 16:9 on desktop, full-width on mobile ─────────────────────── */
+/* ── Day-view: 9:16 portrait on desktop, full-width on mobile ────────────── */
 body.view-day .cw {
   max-width: min(calc(100vw - 20px), var(--day-view-width, 560px)) !important;
+  /* Fill the viewport height; content taller than the viewport scrolls */
+  min-height: calc(100vh - var(--header-h, 64px)) !important;
   padding: 0 0 42px !important;
 }
 </style>
