@@ -218,6 +218,25 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
   inject();
 })();
 
+// ── Day-view: 16:9 width on desktop ──────────────────────────────────────────
+// overlap.js sizes the day view to an A4 ratio. Override to use 16:9 instead,
+// but only on screens wider than 600 px (mobile stays full-width).
+(function () {
+  if (typeof updateDayViewMetrics !== 'function') return;
+  var _orig = updateDayViewMetrics;
+  updateDayViewMetrics = function (hourCount) {
+    _orig(hourCount);
+    if (vm !== 'day' || window._printMaxCols) return;
+    if (window.innerWidth <= 600) return; // keep mobile full-width
+    var headerH = (document.querySelector('header') || {}).offsetHeight || 64;
+    var stripH  = (document.getElementById('weekStrip') || {}).offsetHeight || 0;
+    var usableH = window.innerHeight - headerH - stripH;
+    var target  = Math.floor(usableH * 16 / 9);
+    var bounded = Math.max(480, Math.min(target, window.innerWidth - 40));
+    document.body.style.setProperty('--day-view-width', bounded + 'px');
+  };
+})();
+
 // ── Day-view: week strip navigation ──────────────────────────────────────────
 // Shows day chips in day view. updateWeekStrip() is normally only called after
 // slide animations; we also trigger it whenever the view-day class is toggled.
@@ -337,17 +356,10 @@ body.view-day #weekStrip .ws-dot {
 }
 body.view-day #weekStrip .ws-dot.has-ev { background: rgba(255,255,255,.5); }
 
-/* ── Day-view: full width ────────────────────────────────────────────────── */
+/* ── Day-view: 16:9 on desktop, full-width on mobile ─────────────────────── */
 body.view-day .cw {
-  max-width: 100% !important;
-  width: 100% !important;
+  max-width: min(calc(100vw - 20px), var(--day-view-width, 560px)) !important;
   padding: 0 0 42px !important;
-}
-body.view-day #cg {
-  border-radius: 0 !important;
-  border-left: none !important;
-  border-right: none !important;
-  box-shadow: none !important;
 }
 </style>
 </body>
