@@ -6,10 +6,16 @@
 
 **All rosters, calendars and events in one clear overview.**
 
-<table align="right" width="46%" style="margin-left:24px">
-  <tr><td><img src="docs/screen-week-desktop.png" alt="Week view — desktop" width="100%"><br><sub>Week view — desktop</sub></td></tr>
-  <tr><td><img src="docs/screen-week-tablet.png" alt="Week view — tablet" width="100%"><br><sub>Week view — tablet (split layout)</sub></td></tr>
-  <tr><td><img src="docs/screen-day.png" alt="Day view" width="100%"><br><sub>Day view — full width with week strip</sub></td></tr>
+<table align="right" style="margin-left:24px;border:none">
+  <tr><td align="center"><img src="docs/screen-week-desktop.png" alt="Week view — desktop" width="600"><br><sub>Week view — desktop</sub></td></tr>
+  <tr><td align="center"><img src="docs/screen-week-tablet.png" alt="Week view — medium screen" width="400"><br><sub>Week view — medium screen (split layout)</sub></td></tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screen-week-mobile.png" alt="Week view — mobile" width="195">
+      <img src="docs/screen-day.png" alt="Day view — desktop" width="380"><br>
+      <sub>Mobile &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Day view</sub>
+    </td>
+  </tr>
 </table>
 
 Overlap is an open-source calendar viewer and management layer built for volunteer-driven organisations: neighbourhood centres, festivals, cultural venues, community initiatives and social projects. It pulls together multiple Google Calendars into a single, human-readable schedule — not as separate side-by-side agendas, but as one unified visual that shows at a glance who is working when, which activities are happening, where gaps exist, and where shifts or events overlap.
