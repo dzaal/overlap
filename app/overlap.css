@@ -1,0 +1,304 @@
+:root{--gd:#1a3d2b;--gm:#2d6a4f;--gl:#52b788;--gp:#b7e4c7;--cr:#f8f5ee;--cd:#ede8dc;--am:#e9a825;--tx:#1c1c1c;--mu:#7a8c7e;--hh:22px;--sh:0 4px 24px rgba(26,61,43,.12)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--tx);min-height:100vh;overflow-x:hidden}
+header{background:var(--gd);color:var(--cr);padding:8px 10px;display:flex;align-items:center;gap:6px;box-shadow:var(--sh);position:sticky;top:0;z-index:100;flex-wrap:nowrap}
+.logo{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#pl{font-family:'Playfair Display',serif;font-size:.9rem;font-weight:700;color:#fff;flex:1;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ── PHONE PORTRAIT: compact single-row header ── */
+@media(max-width:599px) and (orientation:portrait){
+  header{padding:5px 6px;gap:4px;min-height:46px}
+  .logo{width:24px;height:24px}
+  /* period label sits naturally between nav and view toggle */
+  #pl{font-size:.75rem;flex:1;min-width:0}
+  /* hide non-functional / secondary on phone */
+  #printBtnGroup,#printMenu,#installBtn,#ls,
+  #shareDrop,#appVer,
+  #loginInfo,#googleStatus{display:none!important}
+  /* events toggle: checkbox-only, no label */
+  .layer-toggle{padding:5px 7px}
+  .layer-toggle label{display:none}
+  /* share: icon-only, fully rounded now arrow is gone */
+  #shareBtn .share-label{display:none}
+  #shareBtn{padding:6px 8px;border-radius:8px!important}
+  /* touch targets — slightly smaller to fit everything */
+  .nb{width:36px;height:36px}
+  .tb-main{padding:6px 8px;font-size:.73rem}
+  .tb-arrow{padding:6px 6px}
+  .vb{padding:6px 8px;font-size:.72rem}
+  /* full-width grid, no side padding */
+  .cw{padding:0 0 36px}
+  #cg{border-left:none;border-right:none;border-radius:0!important}
+  .split-wrap{padding:0 0 36px}
+}
+/* ── PHONE LANDSCAPE: compact header, all buttons visible ── */
+@media(max-width:900px) and (orientation:landscape) and (max-height:500px){
+  header{padding:4px 8px;gap:4px;min-height:40px}
+  #pl{font-size:.74rem}
+  #printBtnGroup,#printMenu,#installBtn,#ls,
+  #appVer,#loginInfo,#googleStatus{display:none!important}
+  /* share: icon-only */
+  #shareBtn .share-label{display:none}
+  #shareBtn{padding:5px 7px;border-radius:8px!important}
+  #shareDrop{padding:5px 6px}
+  /* events toggle: checkbox-only */
+  .layer-toggle{padding:4px 6px}
+  .layer-toggle label{display:none}
+  .nb{width:32px;height:32px}
+  .tb-main{padding:4px 7px;font-size:.72rem}
+  .tb-arrow{padding:4px 5px}
+  .vb{padding:4px 7px;font-size:.7rem}
+  .cw{padding:0 0 16px}
+  .split-wrap{padding:0 0 16px}
+}
+/* share button always visible (icon+label on desktop, icon-only on small screens) */
+#shareBtn{display:flex}
+#appVer{font-size:.5rem;opacity:.7;white-space:nowrap;flex-shrink:0}
+/* ── WEEK STRIP: hidden — no longer used ── */
+#weekStrip{display:none!important}
+.vt{display:flex;background:rgba(255,255,255,.15);border-radius:8px;overflow:hidden;border:1.5px solid rgba(255,255,255,.3);flex-shrink:0}
+.vb{border:none;background:transparent;padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;color:rgba(255,255,255,.75);cursor:pointer;transition:.13s}
+.vb.on{background:var(--gl);color:#fff}
+.layer-toggle{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border-radius:8px;border:1.5px solid rgba(255,255,255,.3);padding:5px 10px;flex-shrink:0;font-size:.76rem;font-weight:500;color:rgba(255,255,255,.75)}
+.layer-toggle input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--gl)}
+.layer-toggle label{cursor:pointer;user-select:none}
+.nb{background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+.nb:hover{background:rgba(255,255,255,.3)}
+.nb svg{pointer-events:none}
+.tb{background:var(--am);color:var(--gd);border:none;border-radius:8px;padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:600;cursor:pointer;transition:.15s;flex-shrink:0}
+.tb:hover{background:#c9881a;color:#fff}
+#ls{font-size:.7rem;background:rgba(255,255,255,.15);color:var(--gp);border-radius:16px;padding:3px 9px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.cw{overflow-x:auto;padding:13px 8px 36px;max-width:100%}
+#cg{display:grid;border-radius:0;overflow:visible;box-shadow:var(--sh);background:#fff;margin:0 auto;border:2.5px solid #222}
+body.view-day .cw{max-width:min(calc(100vw - 20px), var(--day-view-width, 560px));min-height:calc(100vh - 84px);margin-left:auto;margin-right:auto;padding:18px 14px 42px}
+body.view-day #cg{border-width:4px;box-shadow:0 10px 32px rgba(26,61,43,.16)}
+body.view-day .ch,
+body.view-day .ch.th{border-bottom-width:3px}
+body.view-day .ch,
+body.view-day .ch.th,
+body.view-day .tl,
+body.view-day .ce{border-right-width:3px}
+body.view-day .allday-row{border-bottom-width:3px}
+body.view-day .ch .hday,body.view-day .ch .schday{font-size:.78rem;color:#c0392b}
+body.view-day .ce.sharp{border-top-width:2px}
+/* split-week: two stacked grids on small screens */
+.split-wrap{display:flex;flex-direction:column;gap:0;padding:13px 8px 36px}
+.sub-grid{display:grid;border-radius:0;overflow:visible;background:#fff;width:100%}
+/* slide animation wrapper */
+#calOuter{width:100%}
+#slidePort{overflow:hidden;position:relative;width:100%}
+#slideInner{display:flex;transition:transform .28s cubic-bezier(.4,0,.2,1);will-change:transform;width:100%}
+#slideInner>*{flex:0 0 100%;width:100%}
+/* day header cells — bottom border separates header from grid; no individual top (outline handles it) */
+.ch{background:#dbeeff;color:#0a2a4a;text-align:center;padding:7px 4px;font-size:.76rem;font-weight:500;border-right:2.5px solid #222;border-bottom:2.5px solid #222;border-top:none;cursor:pointer}
+.ch:hover{filter:brightness(.95)}
+.ch .dn-short{display:block;font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700}
+.ch .dn-full{display:none;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700}
+.ch .dd{font-size:2.72rem;font-family:'Playfair Display',serif;font-weight:700;display:inline;line-height:1;margin-left:4px}
+.ch .dm{font-size:.72rem;opacity:.75;display:block}
+/* day name + date on ONE LINE */
+.ch .dayline{display:flex;align-items:baseline;justify-content:center;gap:4px;white-space:nowrap}
+.ch.tc{background:#b8daff;color:#0a2a4a}
+.ch.th{background:#dbeeff;color:#0a2a4a;font-size:.66rem;border-right:2.5px solid #222;border-bottom:2.5px solid #222;border-top:none;cursor:default}
+.ch:last-child{border-right:none}
+/* time labels: right border only, NO top/bottom so horiz lines don't cross */
+.tl{height:var(--hh);display:flex;align-items:flex-start;justify-content:flex-end;padding:3px 6px 0 3px;font-size:.68rem;color:var(--mu);font-weight:500;border-top:none;border-bottom:none;border-right:2.5px solid #222;background:var(--cd);white-space:nowrap}
+.tl.sharp{font-weight:700;color:#333}
+/* day cells: right + dotted bottom borders; sharp hours get top dotted line */
+.ce{border-right:2.5px solid #222;border-bottom:1px dotted #bbb;height:var(--hh);position:relative;background:transparent}
+.ce.sharp{border-top:1.5px dashed #777}
+.ce-last-row{border-bottom:none!important}
+.ch:last-child{border-right:none}
+/* last col: no right border */
+.ce[data-lastcol]{border-right:none!important}
+.ch[data-lastcol]{border-right:none!important}
+/* outer frame via border — outline doesn't print in Chrome */
+.split-wrap>div{border:2.5px solid #222;overflow:hidden;margin-bottom:4px}
+.split-wrap>div:last-child{margin-bottom:0}
+.split-wrap .sub-grid{border:none}
+.compact-card{background:#fff;border-radius:0;box-shadow:none;border:none;overflow:visible;flex:1}
+/* all-day events row: full-width stacked blocks */
+.allday-row{background:#f8fbff;border-bottom:2px solid #b0c8e0;padding:2px 3px;display:flex;flex-direction:column;gap:2px}
+.allday-block{position:relative;font-size:.72rem;font-weight:600;border-radius:5px;padding:3px 6px;width:100%;box-sizing:border-box;opacity:.9;border-left:4px solid transparent;line-height:1.3;cursor:default;transition:box-shadow .14s,transform .14s}
+.allday-block.is-holiday{background:#fde8e8;color:#c0392b;border-left-color:#c0392b}
+.allday-block.is-afspraak{background:#e8f0fe;color:#1a56db;border-left-color:#1a56db}
+.allday-block.is-other{border-left-color:currentColor}
+/* Afspraken calendar events: red border, thicker */
+.ev.afspraak{border:2px solid #c0392b!important;border-left:4px solid #c0392b!important}
+.ev.afspraak{background:#fff0f0!important;color:#7b1111!important;opacity:.86}
+.ev.afspraak .et{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.22}
+.ev.afspraak .es{white-space:normal;opacity:.9}
+/* holiday label in day header */
+.ch .hday{display:block;font-size:.6rem;font-weight:600;color:#c0392b;line-height:1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch .schday{display:block;font-size:.58rem;color:#2471a3;font-weight:500;line-height:1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* full day name on wider screens */
+@media(min-width:321px){.ch .dn-short{display:none}.ch .dn-full{display:inline}}
+/* overflow strip: compact list below grid for truly overlapping shifts */
+.overflow-strip{background:#f8f8f6;border-top:2px solid #b0b8a8;padding:3px 4px;display:flex;flex-direction:column;gap:2px}
+.overflow-ev{display:flex;align-items:baseline;padding:3px 6px 3px 8px;border-radius:6px;font-size:.72rem;line-height:1.35;border-left:4px solid transparent;animation:evIn .3s ease forwards;opacity:0;font-family:'DM Sans',sans-serif}
+.overflow-ev .oe-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.overflow-ev .oe-time{font-size:.65rem;opacity:.85;flex-shrink:0;white-space:nowrap;margin-left:5px}
+/* events 20% transparent so grid lines show through */
+.ev{position:absolute;left:2px;right:2px;border-radius:6px;padding:3px 6px 3px 8px;font-size:.72rem;line-height:1.35;overflow:hidden;cursor:default;z-index:5;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:box-shadow .14s,transform .14s;opacity:0;animation:evIn .3s ease forwards;border-left-width:4px!important;border-left-style:solid!important;box-sizing:border-box}
+.ev .shift-delete{position:absolute;top:2px;right:2px;border:none;background:rgba(255,255,255,.9);color:#900;font-weight:700;border-radius:4px;width:18px;height:18px;line-height:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.8rem;}
+.ev .shift-delete:hover{background:#fff;color:#b00;}
+@keyframes evIn{from{opacity:0;transform:translateY(3px)}to{opacity:.9;transform:translateY(0)}}
+.ev:hover{box-shadow:0 2px 8px rgba(0,0,0,.18);transform:translateY(-1px);z-index:20;opacity:.95!important}
+.ev.ev-top,.allday-block.ev-top{opacity:1!important;box-shadow:0 4px 18px rgba(0,0,0,.28)!important;transform:translateY(-1px);z-index:100!important;outline:2px solid rgba(0,0,0,.18);outline-offset:1px}
+.ev .et{font-weight:600;font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev .es{font-size:.67rem;opacity:.8;white-space:nowrap}
+.ev.main-event{background:#e8e8e8!important;color:#3a3a3a!important;border:1px solid #bdc3c7!important;opacity:.92!important;animation:evInOpacity var(--ev-dur) ease-out forwards!important;transform:none!important;pointer-events:none}
+.ev.main-event:before{content:attr(data-main-label);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);font-size:1rem;font-weight:700;color:rgba(40,40,40,0.23);pointer-events:none;white-space:nowrap}
+body.main-layer-hidden .ev.main-event{display:none}
+/* overflow hidden events: invisible by default, revealed on cell hover */
+.ev-overflow{position:absolute;bottom:2px;right:2px;background:rgba(30,30,30,.7);color:#fff;font-size:.58rem;font-weight:700;border-radius:4px;padding:1px 5px;z-index:15;pointer-events:none;letter-spacing:.3px}
+.ce.has-overflow:hover{z-index:200;background:#f0f6ff;box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.ce.has-overflow:hover .ev{
+  position:relative!important;
+  left:0!important;right:0!important;top:auto!important;
+  height:auto!important;min-height:22px;
+  width:100%;box-sizing:border-box;
+  margin-bottom:2px;
+  opacity:.95!important;
+  z-index:201;
+  box-shadow:0 2px 8px rgba(0,0,0,.15)!important;
+  animation:none!important;
+}
+.sm{text-align:center;padding:50px 18px;color:var(--mu);font-size:.92rem}
+.sp{width:32px;height:32px;border:4px solid var(--gp);border-top-color:var(--gm);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* Phone portrait week: vertical stack of day blocks */
+.phone-week-stack{display:flex;flex-direction:column;padding:0 0 48px}
+.phone-day-block{width:100%;margin-bottom:0}
+.phone-day-grid{display:grid;width:100%;background:#fff;border-top:2.5px solid #222}
+.phone-day-grid:last-child{border-bottom:2.5px solid #222}
+/* time column narrower on phone */
+@media(max-width:599px) and (orientation:portrait){
+  .phone-day-grid{grid-template-columns:44px 1fr!important}
+  .phone-day-grid .tl{font-size:.6rem;padding:2px 4px 0 2px}
+  .phone-day-grid .ch{font-size:.7rem}
+  .phone-day-grid .ch .dd{font-size:1.8rem!important}
+}
+.tb-split{display:flex;flex-shrink:0;border-radius:8px;overflow:hidden;gap:0}
+.tb-main{border-radius:8px 0 0 8px;padding:5px 10px;font-size:.76rem}
+.tb-arrow{border-radius:0 8px 8px 0;padding:5px 7px;border-left:1px solid rgba(0,0,0,.15)}
+/* print orientation dropdown */
+#printMenu{position:fixed;z-index:600;background:#fff;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);overflow:hidden;min-width:170px}
+.print-opt{display:flex;align-items:center;gap:9px;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--gd);background:transparent;border:none;cursor:pointer;width:100%;text-align:left;transition:.12s}
+.print-opt:hover{background:var(--gp)}
+.print-opt:not(:last-child){border-bottom:1px solid #eee}
+/* datepicker popup */
+#datePicker{position:fixed;z-index:500;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);padding:12px;width:260px;user-select:none}
+#dpHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+#dpHeader button{background:var(--gm);color:#fff;border:none;border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center}
+#dpHeader button:hover{background:var(--gd)}
+#dpMonthLabel{font-family:'Playfair Display',serif;font-weight:700;color:var(--gd);font-size:.95rem}
+#dpGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.dp-dow{font-size:.65rem;font-weight:600;color:var(--mu);padding:2px 0}
+.dp-day{font-size:.78rem;border-radius:6px;padding:4px 2px;cursor:pointer;color:var(--tx);transition:.12s}
+.dp-day:hover{background:var(--green-pale,#b7e4c7);color:var(--gd)}
+.dp-day.dp-today{background:var(--am);color:var(--gd);font-weight:700}
+.dp-day.dp-sel{background:var(--gm);color:#fff;font-weight:700}
+.dp-day.dp-other{color:#ccc;cursor:default}
+.dp-day.dp-other:hover{background:transparent}
+.compact-card{background:#fff;border-radius:13px;box-shadow:var(--sh);overflow:hidden;flex:1}
+.compact-card-hdr{background:#dbeeff;color:#0a2a4a;text-align:center;padding:7px 4px;border-bottom:2.5px solid #222;border-right:none}
+.compact-card-hdr.tc{background:#b8daff}
+/* Zo header gets a top border to separate from Za */
+.compact-card-hdr+.compact-day-col+.compact-card-hdr,
+.compact-card-hdr~.compact-card-hdr{border-top:2.5px solid #222}
+.compact-card-hdr .dayline{display:flex;align-items:baseline;justify-content:center;gap:4px;white-space:nowrap}
+.compact-card-hdr .dn-s{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;display:inline}
+.compact-card-hdr .dd-s{font-size:2.5rem;font-family:'Playfair Display',serif;font-weight:700;display:inline;line-height:1}
+.compact-card-hdr .dm-s{font-size:.72rem;opacity:.75;display:inline;margin-left:2px}
+.compact-day-col{padding:5px 4px}
+.compact-day-col:not(:last-child){border-bottom:2px solid #e0eef8}
+.compact-day-col.empty{background:#fafaf8}
+.compact-ev{border-radius:6px;padding:3px 6px 3px 8px;margin-bottom:3px;font-size:.72rem;line-height:1.35;border-left:4px solid transparent;animation:evIn .3s ease forwards;opacity:0}
+.compact-ev .et{font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compact-ev .es{font-size:.62rem;opacity:.85;display:block}
+.compact-empty{color:#b0a898;font-size:.68rem;padding:6px 4px;text-align:center}
+.skel-wrap{padding:10px 8px;display:grid;gap:3px}
+.skel-hdr{display:flex;gap:3px;margin-bottom:3px}
+.skel-hdr-time{width:52px;height:38px;border-radius:6px;background:var(--cd)}
+.skel-hdr-day{flex:1;height:38px;border-radius:6px;background:linear-gradient(90deg,#dbeeff 0%,#c5d9f0 50%,#dbeeff 100%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+.skel-row{display:flex;gap:3px}
+.skel-time{width:52px;height:22px;border-radius:4px;background:var(--cd)}
+.skel-cell{flex:1;height:22px;border-radius:4px;background:linear-gradient(90deg,#f0f0f0 0%,#e0e0e0 50%,#f0f0f0 100%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+.skel-cell.has-ev{background:linear-gradient(90deg,#d8f3dc 0%,#b7e4c7 50%,#d8f3dc 100%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.tip{position:fixed;background:var(--gd);color:var(--cr);padding:9px 14px;border-radius:9px;font-size:.76rem;pointer-events:none;z-index:999;box-shadow:var(--sh);max-width:300px;width:max-content;line-height:1.5;display:none}
+.tip.on{display:block}
+.tip strong{font-family:'Playfair Display',serif;font-size:.85rem}
+#shareToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--gd);color:var(--cr);padding:10px 18px;border-radius:10px;font-size:.82rem;font-weight:500;box-shadow:var(--sh);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:1000;white-space:nowrap}
+#shareToast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.err-box{background:#fff8e1;border:1.5px solid var(--am);border-radius:12px;padding:18px 22px;margin:10px;font-size:.85rem;line-height:1.6;color:#5a4000}
+.err-box h3{font-family:'Playfair Display',serif;margin-bottom:8px;color:var(--gd)}
+.err-box code{background:#f0e8c8;padding:2px 6px;border-radius:5px;font-size:.78rem}
+.err-box ol{margin-left:18px;margin-top:6px}
+/* install button */
+#installBtn{display:none;background:#fff;color:var(--gd);border:none;border-radius:9px;padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;gap:6px;align-items:center;transition:.15s;white-space:nowrap}
+#installBtn:hover{background:var(--gp)}
+#installBtn svg{flex-shrink:0}
+.auth-bar{margin-left:auto;display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:.76rem;font-weight:600;}
+.editor-panel{border:1px solid #d4d4d4;border-radius:9px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.crew-legend{display:none;}
+
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{margin:0;padding:0;height:auto;overflow:visible}
+  header{display:none!important}
+  .tip,#datePicker{display:none!important}
+  #printHeader{display:flex!important;align-items:baseline;justify-content:space-between;padding:0 0 3px;border-bottom:2px solid #1a3d2b;margin-bottom:4px}
+  #printHeader .ph-title{font-family:'Playfair Display',serif;font-size:.85rem;font-weight:700;color:#1a3d2b}
+  #printHeader .ph-meta{font-family:'DM Sans',sans-serif;font-size:.72rem;color:#2d6a4f;font-weight:500}
+  #slidePort{overflow:visible!important}
+  #slideInner{transform:none!important;display:block!important;transition:none!important;width:100%!important}
+  #panelPrev,#panelNext{display:none!important}
+  #panelCur{display:block!important;width:100%!important}
+  .cw,.split-wrap{padding:2px 0 0}
+  #cg,.sub-grid{box-shadow:none!important;border-radius:0!important;min-width:unset!important;page-break-inside:avoid}
+  /* force outer border visible in print — outline doesn't print */
+  #cg{border:2px solid #222!important}
+  .split-wrap>div{border:2px solid #222!important;margin-bottom:3px!important}
+  /* ensure last cell right border shows */
+  .ce:last-child{border-right:2px solid #222!important}
+  /* uniform day headers across grid and compact card */
+  .ch,.compact-card-hdr{padding:3px 2px}
+  .ch .dd,.compact-card-hdr .dd-s{font-size:.95rem!important}
+  .ch .dn-full,.compact-card-hdr .dn-s{font-size:.75rem!important}
+  .ch .dm,.compact-card-hdr .dm-s{font-size:.56rem!important}
+  .ch .hday{font-size:.62rem}
+  .ch .schday{font-size:.58rem}
+  .tl{font-size:.58rem;padding:1px 3px 0 1px}
+  .ev{box-shadow:none!important;animation:none!important;opacity:1!important;border-radius:3px;padding:2px 4px;font-size:.72rem;color:#111!important}
+  /* lighten crew shift backgrounds to pastel for print — skip main-event (gray) and afspraken (already pastel) */
+  .ev:not(.main-event):not(.afspraak){filter:saturate(0.4) brightness(1.6)!important}
+  .ev .et{font-size:1em;font-weight:700;color:#111!important}
+  .ev .es{font-size:.64rem;color:#111!important}
+  /* print: re-render uses unlimited cols — no overflow; show all events with times */
+  .ev.ev-hidden{display:block!important;opacity:.82!important}
+  .ev-overflow{display:none!important}
+  .ce.has-overflow:hover .ev,
+  .ce.has-overflow .ev{position:absolute!important;width:auto!important;
+    height:auto!important;min-height:unset!important;margin-bottom:0!important}
+  .compact-ev{font-size:.68rem;padding:2px 4px;margin-bottom:2px;animation:none!important;opacity:1!important;color:#111!important}
+  .compact-ev .et{font-size:1em;color:#111!important}
+  .compact-ev .es{font-size:.6rem;color:#111!important}
+  body{background:#fff}
+}
+/* landscape print — bigger day names */
+body.print-landscape{--hh:17px}
+body.print-landscape .ch .dd,
+body.print-landscape .compact-card-hdr .dd-s{font-size:1.35rem!important}
+body.print-landscape .ch .dn-full,
+body.print-landscape .compact-card-hdr .dn-s{font-size:.8rem!important}
+body.print-landscape .ch .dm,
+body.print-landscape .compact-card-hdr .dm-s{font-size:.58rem!important}
+/* portrait print: taller rows, bigger text */
+body.print-portrait{--hh:26px}
+body.print-portrait .ev{font-size:.78rem}
+body.print-portrait .ev .es{font-size:.68rem}
+body.print-portrait .ch .dd,
+body.print-portrait .compact-card-hdr .dd-s{font-size:1rem!important}
+body.print-portrait .ch .dn-full,
+body.print-portrait .compact-card-hdr .dn-s{font-size:.8rem!important}

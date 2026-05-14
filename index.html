@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parknest – Vrijwilligersrooster</title>
+<meta name="application-name" content="Parknest Rooster">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Parknest">
+<meta name="theme-color" content="#1a3d2b">
+<link rel="manifest" href="app/overlap-manifest.json" id="manifestLink">
+<link rel="apple-touch-icon" href="app/icon-192.png" id="appleIcon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/overlap.css?v=7">
+</head>
+<body>
+<header>
+  <div class="logo">
+    <img id="logoImg" src="app/icon-192.png" alt="Logo" style="width:38px;height:38px;object-fit:contain;border-radius:8px;">
+  </div>
+  <button class="nb" id="pB" title="Vorige (←)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div class="tb-split" id="tBGroup">
+    <button class="tb tb-main" id="tB">Vandaag</button>
+    <button class="tb tb-arrow" id="tBDrop" title="Kies datum">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+  <!-- datepicker popup -->
+  <div id="datePicker" style="display:none">
+    <div id="dpHeader">
+      <button id="dpPrev">&#8592;</button>
+      <span id="dpMonthLabel"></span>
+      <button id="dpNext">&#8594;</button>
+    </div>
+    <div id="dpGrid"></div>
+  </div>
+  <button class="nb" id="nB" title="Volgende (→)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  <div id="pl">…</div>
+  <div class="vt">
+    <button class="vb on" id="bW">Week</button>
+    <button class="vb" id="bD">Dag</button>
+  </div>
+  <div class="layer-toggle">
+    <input type="checkbox" id="mainLayerToggle" checked>
+    <label for="mainLayerToggle">Events</label>
+  </div>
+  <div class="tb-split" id="printBtnGroup">
+    <button class="tb tb-main" id="printLandBtn" title="Afdrukken liggend (A4 ↔)" style="padding:4px 10px;display:flex;align-items:center;gap:4px;font-size:.72rem">
+      <svg width="14" height="11" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="22" height="16" rx="2"/><line x1="1" y1="5" x2="23" y2="5"/></svg>
+      <span class="print-label">Print</span>
+    </button>
+    <button class="tb tb-arrow" id="printDrop" title="Kies afdrukrichting">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+  <div id="printMenu" style="display:none">
+    <button class="print-opt" id="printLandOpt">
+      <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="22" height="16" rx="2"/><line x1="1" y1="5" x2="23" y2="5"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="12" x2="15" y2="12"/></svg>
+      Liggend (A4 ↔)
+    </button>
+    <button class="print-opt" id="printPortOpt">
+      <svg width="11" height="15" viewBox="0 0 16 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="14" height="20" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="4" y1="10" x2="12" y2="10"/><line x1="4" y1="13" x2="10" y2="13"/></svg>
+      Staand (A4 ↕)
+    </button>
+  </div>
+  <div class="tb-split" id="shareBtnGroup">
+    <button class="tb tb-main" id="shareBtn" title="Deel als afbeelding" style="padding:4px 8px;display:flex;align-items:center;gap:4px;font-size:.72rem">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      <span class="share-label">Deel</span>
+    </button>
+    <button class="tb tb-arrow" id="shareDrop" title="Kopieer link" style="padding:5px 7px">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    </button>
+  </div>
+  <button id="installBtn" title="Voeg toe aan startscherm">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v13M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    Installeer
+  </button>
+  <div id="ls">Laden…</div>
+  <div id="authBar" class="auth-bar" style="display:none;">
+    <div id="loginInfo">Niet ingelogd</div>
+    <button id="logoutBtn" class="tb" style="display:none;background:#f8f9fa;color:#1a3d2b;">Uitloggen</button>
+    <button id="googleBtn" class="tb" style="display:none;background:#fff;color:#1a3d2b;">Google login</button>
+    <span id="googleStatus" style="font-size:.72rem;font-weight:600;margin-left:8px;"></span>
+  </div>
+</header>
+<div id="editorPanel" class="editor-panel" style="display:none;margin:10px;padding:10px;background:#f9f9f8;border:1px solid #d0d0d0;border-radius:10px;max-width:980px;margin-left:auto;margin-right:auto;">
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+    <label style="font-weight:700;font-size:.86rem;">Datum <input type="date" id="newShiftDate" style="margin-left:4px"></label>
+    <label style="font-weight:700;font-size:.86rem;">Start <input type="time" id="newShiftStart" style="margin-left:4px"></label>
+    <label style="font-weight:700;font-size:.86rem;">Eind <input type="time" id="newShiftEnd" style="margin-left:4px"></label>
+    <label style="font-weight:700;font-size:.86rem;">Crew <select id="crewPicker"></select></label>
+    <button id="addShiftBtn" class="tb" style="padding:4px 9px;">Voeg dienst toe</button>
+  </div>
+  <div style="margin-top:8px;font-size:.8rem;color:#333;">Alle wijzigingen worden lokaal opgeslagen in je browser. Alleen ingelogde gebruikers kunnen nieuwe diensten toevoegen.</div>
+</div>
+<div id="crewLegend" class="crew-legend" style="margin:7px auto 0;max-width:980px;padding:0 8px;font-size:.85rem;display:flex;flex-wrap:wrap;gap:6px;"></div>
+<div id="weekStrip"></div>
+<div id="printHeader" style="display:none">
+  <span class="ph-title">Parknest – Vrijwilligersrooster</span>
+  <span class="ph-meta" id="printMeta"></span>
+</div>
+<div id="calOuter"><div id="slidePort"><div id="slideInner"><div id="panelPrev"></div><div id="panelCur" id="panelCur"><div id="skelLoad"></div></div><div id="panelNext"></div></div></div></div>
+<div class="tip" id="tip"></div>
+
+<script>window.ROOSTER_NO_AUTH = true;</script>
+<script src="app/overlap-config.js"></script>
+<script>
+// Apply logo from config before overlap.js renders anything
+(function () {
+  var logoUrl = ((window.OVERLAP_CONFIG || window.ROOSTER_CONFIG || {}).branding || {}).logoUrl;
+  if (logoUrl) {
+    document.getElementById('appleIcon').href = logoUrl;
+    document.getElementById('logoImg').src    = logoUrl;
+  }
+})();
+</script>
+<script src="app/overlap.js?v=112"></script>
+<script>
+// ── Disable built-in holiday detection ───────────────────────────────────────
+// overlap.js has hardcoded Dutch public holidays and Amsterdam school vacations.
+// We replace those with the "important dates" system managed in the admin panel.
+if (typeof getDutchHolidays === 'function')           getDutchHolidays           = function(y){ return {}; };
+if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays = function(y){ return {}; };
+
+// ── Week start + always-show days ────────────────────────────────────────────
+(function () {
+  var cfg = window.OVERLAP_CONFIG || window.ROOSTER_CONFIG;
+  if (!cfg || !cfg.defaults) return;
+
+  var weekStartDay = cfg.defaults.weekStartDay; // 0=Sun, 1=Mon (default)
+  var alwaysShow   = cfg.defaults.alwaysShowDays; // array of day numbers, optional
+
+  // Override sowk() for Sunday-start
+  if (weekStartDay === 0 && typeof sowk === 'function') {
+    sowk = function (d) {
+      var c = new Date(d);
+      c.setDate(c.getDate() - c.getDay()); // rewind to Sunday
+      c.setHours(0, 0, 0, 0);
+      return c;
+    };
+  }
+
+  // Override hasTuesdayEvents() to respect alwaysShowDays.
+  // Also fixes the offset when week starts on Sunday (anchor+1 would be Mon, not Tue).
+  if (typeof hasTuesdayEvents === 'function') {
+    var _orig = hasTuesdayEvents;
+    hasTuesdayEvents = function (anchorDate) {
+      // With Sunday start the original "+1 = Tuesday" arithmetic is off;
+      // fall back to always-show logic only.
+      if (weekStartDay === 0) {
+        return !Array.isArray(alwaysShow) || alwaysShow.indexOf(2) !== -1;
+      }
+      // Monday start: honour alwaysShowDays if set
+      if (Array.isArray(alwaysShow)) {
+        if (alwaysShow.indexOf(2) !== -1) return true;  // always show
+        return _orig(anchorDate);                        // show only if events
+      }
+      return _orig(anchorDate);
+    };
+  }
+})();
+
+// ── Important dates ──────────────────────────────────────────────────────────
+// Inject labels from config.defaults.importantDates into calendar day headers.
+// Supports single days {date, label} and ranges {date, endDate, label}.
+(function () {
+  var cfg     = window.OVERLAP_CONFIG || window.ROOSTER_CONFIG;
+  var entries = cfg && cfg.defaults && cfg.defaults.importantDates;
+  if (!Array.isArray(entries) || !entries.length) return;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function toKey(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  // Build a map: YYYY-MM-DD → label (expand ranges day by day)
+  var map = {};
+  entries.forEach(function (e) {
+    if (!e.date || !e.label) return;
+    if (e.endDate && e.endDate > e.date) {
+      // Range: fill every day from date to endDate inclusive
+      var cur = new Date(e.date + 'T00:00:00');
+      var end = new Date(e.endDate + 'T00:00:00');
+      while (cur <= end) {
+        map[toKey(cur)] = e.label;
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else {
+      map[e.date] = e.label;
+    }
+  });
+
+  function inject() {
+    document.querySelectorAll('.ch[data-toggle-day]').forEach(function (el) {
+      if (el.dataset.idInjected) return;
+      el.dataset.idInjected = '1';
+      var d = new Date(el.dataset.toggleDay);
+      if (isNaN(d)) return;
+      var label = map[toKey(d)];
+      if (!label) return;
+      var span = document.createElement('span');
+      span.className = 'schday';
+      span.textContent = '📅 ' + label;
+      el.appendChild(span);
+    });
+  }
+
+  var root = document.getElementById('calOuter');
+  if (root) new MutationObserver(inject).observe(root, { childList: true, subtree: true });
+  inject();
+})();
+
+// ── Day-view: week strip navigation ──────────────────────────────────────────
+// Shows day chips in day view. updateWeekStrip() is normally only called after
+// slide animations; we also trigger it whenever the view-day class is toggled.
+(function () {
+  function buildDayStrip() {
+    var strip = document.getElementById('weekStrip');
+    if (!strip) return;
+
+    var today     = new Date(); today.setHours(0, 0, 0, 0);
+    var weekStart = sowk(anc);
+    var selDate   = new Date(anc); selDate.setHours(0, 0, 0, 0);
+
+    var h = '';
+    for (var i = 0; i < 7; i++) {
+      var d       = addD(weekStart, i);
+      var isSel   = same(d, selDate);
+      var isToday = same(d, today);
+      var hasEv   = allEv.some(function (ev) {
+        var ds = new Date(ev.start); ds.setHours(0, 0, 0, 0);
+        return same(ds, d);
+      });
+      h += '<div class="ws-day' +
+           (isSel   ? ' ws-sel'   : '') +
+           (isToday ? ' ws-today' : '') +
+           '" data-wsd="' + d.toDateString() + '">' +
+           '<span class="ws-dn">' + DS[d.getDay()] + '</span>' +
+           '<span class="ws-num">' + d.getDate() + '</span>' +
+           '<span class="ws-dot' + (hasEv ? ' has-ev' : '') + '"></span>' +
+           '</div>';
+    }
+    strip.innerHTML = h;
+
+    strip.querySelectorAll('[data-wsd]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        anc = new Date(el.dataset.wsd);
+        vm  = 'day';
+        document.getElementById('bD').classList.add('on');
+        document.getElementById('bW').classList.remove('on');
+        render(0);
+      });
+    });
+  }
+
+  // Override so slide-animation calls also use the new strip
+  if (typeof updateWeekStrip === 'function') {
+    var _origStrip = updateWeekStrip;
+    updateWeekStrip = function () {
+      if (vm === 'day') { buildDayStrip(); return; }
+      _origStrip();
+    };
+  }
+
+  // Also trigger whenever view-day class is added (mode switch without animation)
+  new MutationObserver(function () {
+    if (document.body.classList.contains('view-day')) {
+      setTimeout(buildDayStrip, 0);
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+})();
+</script>
+
+<style>
+/* ── Day-view week strip ─────────────────────────────────────────────────── */
+body.view-day #weekStrip {
+  display: flex !important;
+  justify-content: space-around;
+  align-items: center;
+  padding: 4px 8px 2px;
+  background: var(--gd, #1a3d2b);
+  gap: 0;
+}
+body.view-day #weekStrip .ws-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  cursor: pointer;
+  padding: 5px 2px 4px;
+  border-radius: 10px;
+  transition: background .12s;
+}
+body.view-day #weekStrip .ws-day:hover { background: rgba(255,255,255,.08); }
+body.view-day #weekStrip .ws-dn {
+  font-size: .65rem;
+  font-weight: 600;
+  color: rgba(255,255,255,.65);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+body.view-day #weekStrip .ws-num {
+  font-size: .95rem;
+  font-weight: 500;
+  color: rgba(255,255,255,.85);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+body.view-day #weekStrip .ws-sel .ws-num {
+  background: #fff;
+  color: var(--gd, #1a3d2b);
+  font-weight: 700;
+}
+body.view-day #weekStrip .ws-today:not(.ws-sel) .ws-num {
+  border: 2px solid rgba(255,255,255,.5);
+}
+body.view-day #weekStrip .ws-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: transparent;
+}
+body.view-day #weekStrip .ws-dot.has-ev { background: rgba(255,255,255,.5); }
+
+/* ── Day-view: full width ────────────────────────────────────────────────── */
+body.view-day .cw {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 0 0 42px !important;
+}
+body.view-day #cg {
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+</style>
+</body>
+</html>

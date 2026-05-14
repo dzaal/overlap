@@ -1,0 +1,23 @@
+# Generated config — contains API keys and private calendar URLs
+app/overlap-config.js
+app/overlap-config.js.bak
+
+# Generated PWA manifest (auto-created from branding settings)
+app/overlap-manifest.json
+
+# Uploaded logo and generated icons
+uploads/
+app/icon-192.png
+app/icon-512.png
+
+# PHP / server artefacts
+*.log
+*.bak
+/vendor/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
