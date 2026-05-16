@@ -113,12 +113,21 @@
 <script>window.ROOSTER_NO_AUTH = true;</script>
 <script src="app/overlap-config.js"></script>
 <script>
-// Apply logo from config before overlap.js renders anything
+// Apply branding from config before overlap.js renders anything
 (function () {
-  var logoUrl = ((window.OVERLAP_CONFIG || window.ROOSTER_CONFIG || {}).branding || {}).logoUrl;
-  if (logoUrl) {
-    document.getElementById('appleIcon').href = logoUrl;
-    document.getElementById('logoImg').src    = logoUrl;
+  var b = ((window.OVERLAP_CONFIG || window.ROOSTER_CONFIG || {}).branding || {});
+
+  // Logo
+  if (b.logoUrl) {
+    document.getElementById('appleIcon').href = b.logoUrl;
+    document.getElementById('logoImg').src    = b.logoUrl;
+  }
+
+  // Theme color → CSS variable --gd drives header, buttons, tooltips, etc.
+  if (b.themeColor && /^#[0-9a-fA-F]{6}$/.test(b.themeColor)) {
+    document.documentElement.style.setProperty('--gd', b.themeColor);
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.content = b.themeColor;
   }
 })();
 </script>
