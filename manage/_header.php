@@ -5,6 +5,29 @@
 $pageTitle  = $pageTitle  ?? 'Overlap Beheer';
 $activePage = $activePage ?? '';
 
+// ── Read theme color from config ──────────────────────────────────────────────
+$_themeColor  = '#1a3d2b';
+$_accentColor = '#52b788';
+
+if (class_exists('Config')) {
+    try {
+        $_cfg = Config::read();
+        $_tc  = $_cfg['branding']['themeColor'] ?? '';
+        if (preg_match('/^#[0-9a-fA-F]{6}$/i', $_tc)) {
+            $_themeColor = $_tc;
+            // Derive accent: blend theme color 45 % toward white
+            $_r = hexdec(substr($_tc, 1, 2));
+            $_g = hexdec(substr($_tc, 3, 2));
+            $_b = hexdec(substr($_tc, 5, 2));
+            $_accentColor = sprintf('#%02x%02x%02x',
+                min(255, (int)($_r + (255 - $_r) * 0.45)),
+                min(255, (int)($_g + (255 - $_g) * 0.45)),
+                min(255, (int)($_b + (255 - $_b) * 0.45))
+            );
+        }
+    } catch (Throwable $e) { /* keep defaults */ }
+}
+
 $baseUrl = dirname($_SERVER['SCRIPT_NAME'], 1); // e.g. /overlap/manage
 $root    = dirname($_SERVER['SCRIPT_NAME'], 2); // e.g. /overlap
 
@@ -23,6 +46,7 @@ $navItems = [
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle) ?> – Overlap Beheer</title>
 <link rel="stylesheet" href="../assets/css/admin.css">
+<style>:root{--green:<?= htmlspecialchars($_themeColor) ?>;--accent:<?= htmlspecialchars($_accentColor) ?>}</style>
 </head>
 <body>
 
