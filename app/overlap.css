@@ -95,7 +95,7 @@ body.view-day .ch.th,
 body.view-day .tl,
 body.view-day .ce{border-right-width:3px}
 body.view-day .allday-row{border-bottom-width:3px}
-body.view-day .ch .hday,body.view-day .ch .schday{font-size:.78rem;color:#c0392b}
+body.view-day .ch .hday,body.view-day .ch .schday,body.view-day .ch .custday{font-size:.78rem;color:#c0392b}
 body.view-day .ce.sharp{border-top-width:2px}
 /* split-week: two stacked grids on small screens */
 .split-wrap{display:flex;flex-direction:column;gap:0;padding:13px 8px 36px}
@@ -147,6 +147,7 @@ body.view-day .ce.sharp{border-top-width:2px}
 /* holiday label in day header */
 .ch .hday{display:block;font-size:.6rem;font-weight:600;color:#c0392b;line-height:1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ch .schday{display:block;font-size:.58rem;color:#2471a3;font-weight:500;line-height:1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch .custday{display:block;font-size:.58rem;color:#7d5a00;font-weight:500;line-height:1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* full day name on wider screens */
 @media(min-width:321px){.ch .dn-short{display:none}.ch .dn-full{display:inline}}
 /* overflow strip: compact list below grid for truly overlapping shifts */

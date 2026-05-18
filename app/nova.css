@@ -193,8 +193,9 @@ body.theme-nova .tl.sharp {
 }
 
 /* ── Special / important dates: readable on dark grid ── */
-body.theme-nova .ch .hday  { color: #fca5a5; } /* holiday label: light red   */
+body.theme-nova .ch .hday   { color: #fca5a5; } /* holiday label: light red   */
 body.theme-nova .ch .schday { color: #93c5fd; } /* school holiday: light blue */
+body.theme-nova .ch .custday { color: #fcd34d; } /* user date: amber           */
 
 body.theme-nova .allday-block {
   color: #e0e7ff;
@@ -214,16 +215,15 @@ body.theme-nova .allday-block.is-other {
   color: #e0e7ff;
 }
 
-/* ── Events layer toggle: animated fade-out in nova ── */
-/* Override display:none with a smooth blur+scale exit */
+/* ── Events layer toggle: scale-out disappear in nova ── */
 body.theme-nova.main-layer-hidden .ev.main-event {
   display: block !important;
-  animation: nova-layer-hide .4s cubic-bezier(.4,0,.6,1) forwards !important;
+  animation: nova-layer-hide .35s cubic-bezier(.4,0,.6,1) forwards !important;
   pointer-events: none;
 }
 @keyframes nova-layer-hide {
-  0%   { opacity: .92; filter: blur(0);   transform: none; }
-  100% { opacity: 0;   filter: blur(6px); transform: scaleY(.78); }
+  0%   { opacity: .92; transform: none; }
+  100% { opacity: 0;   transform: scaleY(.55) scaleX(.88); }
 }
 /* Layer toggle button: subtle glow when events are hidden */
 body.theme-nova.main-layer-hidden .layer-toggle {
