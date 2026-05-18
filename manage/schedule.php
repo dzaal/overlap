@@ -67,7 +67,21 @@ try {
 $d              = $cfg['defaults'] ?? [];
 $weekStartDay   = $d['weekStartDay']   ?? 1;                  // 1=Monday default
 $alwaysShowDays = $d['alwaysShowDays'] ?? [0, 1, 3, 4, 5, 6]; // default: all except Tuesday
-$importantDates = $d['importantDates'] ?? [];
+// Strip category prefixes from any existing labels and write back immediately
+$importantDates = array_map(function ($entry) {
+    $entry['label'] = trim(preg_replace(
+        '/^(?:Schoolvakantie|Nationale feestdag|Feestdag|Vakantie|Bijzondere dag|Holiday)\s*:\s*/iu',
+        '', $entry['label']
+    ));
+    return $entry;
+}, $d['importantDates'] ?? []);
+if ($importantDates !== ($d['importantDates'] ?? [])) {
+    try {
+        $cfg2 = Config::read();
+        $cfg2['defaults']['importantDates'] = $importantDates;
+        Config::write($cfg2);
+    } catch (\Throwable $e) { /* silently ignore */ }
+}
 
 $dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 $dayShort = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
