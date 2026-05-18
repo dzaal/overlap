@@ -419,15 +419,18 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
 (function () {
   if (typeof updateDayViewMetrics !== 'function') return;
   var _orig = updateDayViewMetrics;
-  updateDayViewMetrics = function (hourCount) {
-    _orig(hourCount);
+  updateDayViewMetrics = function (hourCount, maxCrewCols) {
+    _orig(hourCount, maxCrewCols || 1);
     if (vm !== 'day' || window._printMaxCols) return;
     if (window.innerWidth <= 600) return;
     var headerH = (document.querySelector('header') || {}).offsetHeight || 64;
     var stripH  = (document.getElementById('weekStrip') || {}).offsetHeight || 0;
     var usableH = window.innerHeight - headerH - stripH;
-    var target  = Math.floor(usableH * 9 / 16);
-    var bounded = Math.max(320, Math.min(target, window.innerWidth - 40));
+    var portrait  = Math.floor(usableH * 9 / 16);
+    var cols      = maxCrewCols || window._dayMaxCols || 1;
+    var colBased  = 52 + cols * 120;
+    var target    = Math.max(portrait, colBased);
+    var bounded   = Math.max(320, Math.min(target, window.innerWidth - 40));
     document.body.style.setProperty('--day-view-width', bounded + 'px');
   };
 })();
@@ -476,6 +479,19 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
         buildDayStrip();
       });
     });
+
+    // Swipe left/right on the strip to jump to prev/next week
+    var _tx = 0;
+    strip.addEventListener('touchstart', function (e) {
+      _tx = e.touches[0].clientX;
+    }, { passive: true });
+    strip.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - _tx;
+      if (Math.abs(dx) < 40) return;
+      anc = addD(new Date(anc), dx < 0 ? 7 : -7);
+      render(0);
+      buildDayStrip();
+    }, { passive: true });
   }
 
   // Override so slide-animation calls also use the new strip
