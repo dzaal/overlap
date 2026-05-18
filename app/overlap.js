@@ -1652,7 +1652,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   });
 
   // Day view: use 20 so continuation events never overflow; week view caps at 3
-  const maxCols = window._printMaxCols || (colDefs.length === 1 ? 20 : 3);
+  const maxCols = window._printMaxCols || (vm === 'day' ? 20 : 3);
 
   let animIdx=0;
   // Collect overflow events per day column for the overflow strip
@@ -1666,7 +1666,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     // Main events render full-width at z-index:2; crew events get all maxCols slots to themselves
     const crewAssigned=assignColumns(crewEvs,maxCols);
     // In day view: if actual columns exceed initial estimate (due to continuations), widen the panel
-    if(colDefs.length===1&&!window._printMaxCols&&crewAssigned.length){
+    if(vm==='day'&&!window._printMaxCols&&crewAssigned.length){
       const _ac=Math.max(...crewAssigned.map(a=>a.col))+1;
       if(_ac>(window._dayMaxCols||1)){window._dayMaxCols=_ac;updateDayViewMetrics(eh-sh,_ac);}
     }
