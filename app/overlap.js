@@ -1623,8 +1623,8 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     }
   });
 
-  // Cap at 3 crew columns in all views; overflow strip handles the rest
-  const maxCols = window._printMaxCols || 3;
+  // Day view (single column) can fit more crew columns; week view caps at 3
+  const maxCols = window._printMaxCols || (colDefs.length === 1 ? 5 : 3);
 
   let animIdx=0;
   // Collect overflow events per day column for the overflow strip
