@@ -1616,7 +1616,6 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   colDefs.forEach(cd=>{ colEvents[cd.days[0].toDateString()]=[] });
   exp.forEach(ev=>{
     if(ev.start._ad)return;
-    if(mainHidden && ev._cal==='main')return; // exclude from overlap calc when layer hidden
     const ds=new Date(ev.start);ds.setHours(0,0,0,0);
     const k=ds.toDateString();
     if(colEvents[k]!==undefined) colEvents[k].push(ev);
@@ -1668,6 +1667,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
         dv.style.background='linear-gradient(135deg, rgba(173,244,210,.45), rgba(63,190,116,.25))';
         dv.style.color='#0f3c20';
         dv.style.border='2px solid rgba(26,61,43,.45)';
+        if(mainHidden) dv.style.opacity='0'; // suppress nova-layer-hide flash on initial render
       }
       if(ev._cal==='afspraken'){dv.style.background='#fde8e8';dv.style.color='#7b1111';}
       dv.style.top=`${top-(cH-sh)*HH}px`;dv.style.height=`${height}px`;
@@ -1684,7 +1684,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
         leftPct=CL+col*_cw; rightPct=100-(CL+(col+1)*_cw);
         dv.dataset.crewCol=String(col);
         dv.dataset.crewTotal=String(total);
-        dv.dataset.hasMain=hasMainToday?'1':'0';
+        dv.dataset.hasMain=mainEvs.length>0?'1':'0';
       }
 
       dv.style.left=`${leftPct}%`;dv.style.right=`${rightPct}%`;
@@ -1872,8 +1872,9 @@ document.getElementById('mainLayerToggle')?.addEventListener('change',(e)=>{
     _animateCrewPositions(true);
     setTimeout(()=>document.body.classList.add('main-layer-hidden'),260);
   } else {
-    // Showing: reveal main events first, then animate shifts into position
+    // Showing: reveal main events first, clear any inline opacity suppression, then animate shifts
     document.body.classList.remove('main-layer-hidden');
+    document.querySelectorAll('.ev.main-event').forEach(el=>{ el.style.opacity=''; });
     setTimeout(()=>_animateCrewPositions(false),150);
   }
 });
