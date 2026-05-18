@@ -12,8 +12,8 @@ window.OVERLAP_CONFIG = {
     appDescription:        'Volunteer schedule for My Organisation',
     logoUrl:               '',                           // set via Display settings
     themeColor:            '#1a3d2b',
-    siteUrl:               'https://example.com',
-    startUrl:              'https://example.com/overlap/index.html',
+    foregroundColor:       '#f8f5ee',                    // text on theme-colored backgrounds
+    accentColor:           '#52b788',                    // buttons, active tab, highlights
     defaultLocation:       'My Location',
     shareFilePrefix:       'myorg',
   },

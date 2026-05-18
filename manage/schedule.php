@@ -35,6 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'save
             $date    = trim($date);
             $endDate = trim($rawEndDates[$k] ?? '');
             $label   = trim($rawLabels[$k]   ?? '');
+            // Strip common Dutch calendar category prefixes (e.g. "Schoolvakantie: ", "Nationale feestdag: ")
+            $label   = preg_replace('/^(?:Schoolvakantie|Nationale feestdag|Feestdag|Vakantie|Bijzondere dag|Holiday)\s*:\s*/iu', '', $label);
+            $label   = trim($label);
             if (!$date || !$label || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) continue;
             $entry = ['date' => $date, 'label' => $label];
             if ($endDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate) && $endDate > $date) {
@@ -105,15 +108,6 @@ include '_header.php';
     <div class="card-body">
       <div style="display:flex;gap:12px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;
-                      background:<?= $weekStartDay === 1 ? '#e8f4ee' : '#f4f6f4' ?>;
-                      border:2px solid <?= $weekStartDay === 1 ? 'var(--accent)' : 'var(--border)' ?>;
-                      border-radius:8px;padding:10px 20px;font-weight:600;transition:.15s"
-               id="wsdMon">
-          <input type="radio" name="weekStartDay" value="1" <?= $weekStartDay === 1 ? 'checked' : '' ?>
-                 style="display:none" onchange="highlightWsd()">
-          Monday
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;
                       background:<?= $weekStartDay === 0 ? '#e8f4ee' : '#f4f6f4' ?>;
                       border:2px solid <?= $weekStartDay === 0 ? 'var(--accent)' : 'var(--border)' ?>;
                       border-radius:8px;padding:10px 20px;font-weight:600;transition:.15s"
@@ -121,6 +115,15 @@ include '_header.php';
           <input type="radio" name="weekStartDay" value="0" <?= $weekStartDay === 0 ? 'checked' : '' ?>
                  style="display:none" onchange="highlightWsd()">
           Sunday
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;
+                      background:<?= $weekStartDay === 1 ? '#e8f4ee' : '#f4f6f4' ?>;
+                      border:2px solid <?= $weekStartDay === 1 ? 'var(--accent)' : 'var(--border)' ?>;
+                      border-radius:8px;padding:10px 20px;font-weight:600;transition:.15s"
+               id="wsdMon">
+          <input type="radio" name="weekStartDay" value="1" <?= $weekStartDay === 1 ? 'checked' : '' ?>
+                 style="display:none" onchange="highlightWsd()">
+          Monday
         </label>
       </div>
     </div>

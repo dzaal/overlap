@@ -58,20 +58,40 @@ Because all these layers appear together in a single view, the connections becom
 - **Full-screen day view** — day view stretches edge-to-edge for maximum readability
 - **Colour-coded crew** — each volunteer gets a personal colour; shifts are instantly recognisable
 - **All-day event pills** — multi-day events span across the top of the grid
-- **Important dates** — holidays, school vacations and custom date ranges shown as labels on calendar days, managed via the admin panel (no hardcoded Amsterdam school calendar)
-- **ICS import for important dates** — upload an `.ics` file; consecutive same-named events are automatically collapsed into date ranges
+- **Important dates** — holidays, school vacations and custom date ranges shown as labels on calendar days, managed via the admin panel
+- **ICS import for important dates** — upload an `.ics` file; consecutive same-named events are automatically collapsed into date ranges; category prefixes (`Schoolvakantie:`, `Nationale feestdag:` etc.) are stripped automatically
 - **Always-show days** — configure which weekdays are always visible vs. hidden when empty
-- **Week start** — choose Monday or Sunday as the first day of the week
+- **Week start** — choose Monday or Sunday as the first day of the week (persisted per-user in a cookie)
 - **Print** — landscape or portrait A4 with a dedicated print stylesheet
 - **Share as image** — export the current view as a shareable PNG
-- **PWA** — installable on Android (and iOS via Add to Home Screen); works offline after first load
+- **Copy link** — copy the current view URL to the clipboard
+- **PWA** — installable on Android, iOS and desktop; "Install as app" button in the hamburger menu
+- **Auto-update detection** — the app polls for file changes every 10 minutes and on tab focus; when a new version is deployed a pulsing badge appears on the hamburger and a reload prompt inside the drawer
+- **Auto-refresh** — configurable calendar refresh interval (5 / 15 / 30 / 60 min or off) stored per-user in a cookie
+- **Hamburger drawer** — always-visible slide-in menu containing Print, Share, Install, Settings (theme, week start, refresh interval) and version / author info
+- **Theme system** — three built-in themes; add your own by dropping a CSS file in `app/`
+- **Spring-curve event animations** — crew shifts pop in with an overshoot spring animation
 - **No database** — the entire configuration lives in a single JavaScript file (`overlap-config.js`)
+
+---
+
+## Themes
+
+Overlap ships with three themes, selectable in the Display admin page or the in-app settings drawer:
+
+| Theme | Description |
+|---|---|
+| **Blockery** | Bold grid with thick black borders and large date numbers (default) |
+| **Softy** | Rounded layout with circle day labels, no black borders, white header |
+| **Nova** | Dark space aesthetic: navy/indigo header, pastel crew shifts with shimmer animation, white time column |
+
+To add your own theme, create `app/mytheme.css` with selectors prefixed by `body.theme-mytheme {}`. It will appear automatically in the theme selector in the admin panel.
 
 ---
 
 ## Admin panel (`/manage`)
 
-A PHP-based management interface lets you configure everything through a browser — no file editing required.
+A PHP-based management interface lets you configure everything through a browser — no file editing required. The panel is mobile-friendly with a collapsible slide-in navigation drawer and uses the uploaded logo as its favicon.
 
 | Page | What you can manage |
 |---|---|
@@ -79,7 +99,7 @@ A PHP-based management interface lets you configure everything through a browser
 | **Calendars** | ICS feed URLs with live test button |
 | **Volunteers** | Crew names and colours |
 | **Schedule** | Week start day, always-show days, important dates, ICS import |
-| **Display** | Branding (name, logo, theme colour), font scales, filter keywords |
+| **Display** | Branding (name, logo, theme), font scales, filter keywords, visual theme |
 
 Changes are written back to `overlap-config.js` immediately. The manifest (`overlap-manifest.json`) and PWA icons are regenerated automatically when branding is saved.
 
@@ -89,10 +109,13 @@ Changes are written back to `overlap-config.js` immediately. The manifest (`over
 
 ```
 overlap/
-├── index.html                  # Main calendar app (PWA shell)
+├── index.php                   # Main calendar app (PHP shell — reads config for theme/branding)
 ├── app/
-│   ├── overlap.js              # Calendar engine (rendering, ICS parsing, Google API)
-│   ├── overlap.css             # Calendar styles
+│   ├── overlap.js              # Calendar engine (rendering, ICS parsing, PWA)
+│   ├── overlap.css             # Base calendar styles
+│   ├── blockery.css            # Blockery theme marker (styles embedded in overlap.css)
+│   ├── softy.css               # Softy theme marker (styles embedded in overlap.css)
+│   ├── nova.css                # Nova dark theme — full standalone overrides
 │   ├── overlap-config.js       # Live config (generated; do not edit by hand)
 │   ├── overlap-manifest.json   # PWA manifest (auto-generated from branding)
 │   ├── proxy.php               # Server-side ICS proxy and cache (15 min)
@@ -105,7 +128,7 @@ overlap/
 │   ├── schedule.php            # Schedule settings + important dates + ICS import
 │   ├── display.php             # Branding + display settings + logo upload
 │   ├── api.php                 # AJAX endpoint (calendar test, etc.)
-│   ├── _header.php             # Shared nav header
+│   ├── _header.php             # Shared nav header (mobile-responsive drawer)
 │   └── _footer.php             # Shared footer
 ├── lib/
 │   ├── Config.php              # JS config reader/writer (no database needed)
@@ -145,7 +168,7 @@ overlap/
 
 4. **Open `/manage/display.php`** in your browser and fill in your branding, then go through Calendars, Volunteers and Schedule.
 
-5. **Open `index.html`** — your calendar is live.
+5. **Open `index.php`** — your calendar is live.
 
 ### Proxy
 
@@ -166,7 +189,7 @@ window.OVERLAP_CONFIG = {
     appShortName:   'MyOrg',
     logoUrl:        'https://example.com/logo.png',
     themeColor:     '#1a3d2b',
-    startUrl:       'https://example.com/overlap/index.html',
+    theme:          'blockery',   // blockery | softy | nova | or any app/*.css filename
     // ...
   },
   crew: [
@@ -210,20 +233,43 @@ You can also **import an `.ics` file** (e.g. a national holiday calendar or scho
 - Parses every `VEVENT` block
 - Adjusts the exclusive `DTEND` to an inclusive end date
 - **Automatically collapses consecutive same-named events into a single range** (e.g. 9 individual "Summer vacation" days become one row)
+- Strips common category prefixes (`Schoolvakantie:`, `Nationale feestdag:` etc.) from event titles
 
-The built-in Amsterdam school calendar and Dutch public holiday list that were part of the original `overlap.js` engine are disabled; the admin-managed important dates system is the sole source for day labels.
+---
+
+## In-app settings (hamburger menu)
+
+Clicking the hamburger icon opens a slide-in drawer available on all screen sizes. It contains:
+
+| Section | Options |
+|---|---|
+| Update notice | Shown when a new version is detected; click to reload |
+| Install | Install as PWA (shown when browser supports it) |
+| Afdrukken | Landscape or portrait print |
+| Delen | Share as image / copy link |
+| Instellingen | Theme, week start day |
+| Automatisch vernieuwen | 5 / 15 / 30 / 60 min or off — stored per-user in a cookie |
+| Footer | App version, author link, manage link |
+
+Theme and week-start changes trigger a page reload to apply. The refresh interval is applied instantly without reloading.
 
 ---
 
 ## PWA / installation
 
-The app ships with a web manifest and service worker hooks so it can be installed:
+The app ships with a web manifest so it can be installed:
 
-- **Android**: tap the browser menu → "Add to Home Screen" or "Install app"
+- **Android**: tap the browser menu → "Add to Home Screen" or use the "Installeer als app" button in the hamburger menu
 - **iOS**: tap Share → "Add to Home Screen"
-- **Desktop Chrome/Edge**: install button in the address bar
+- **Desktop Chrome/Edge**: install button in the address bar or hamburger menu
 
 The PWA icons (`icon-192.png` and `icon-512.png`) are automatically generated from the logo you upload in the Display settings — centre-cropped to square and resampled to the correct size.
+
+---
+
+## Auto-update detection
+
+`index.php` exposes a lightweight `?overlap_upd=1` endpoint that returns the maximum modification timestamp of `index.php`, `overlap.js` and `overlap.css`. The app stores the timestamp from the initial page load and polls this endpoint every 10 minutes and whenever the browser tab regains focus. When the server timestamp is newer, a pulsing amber badge appears on the hamburger button and an animated "Update beschikbaar — herladen" button appears at the top of the drawer.
 
 ---
 

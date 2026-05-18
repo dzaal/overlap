@@ -26,8 +26,6 @@ function hostDefaults(): array
         'appName'         => $baseName . ' Volunteer Schedule',
         'appShortName'    => $baseName,
         'appDescription'  => 'Volunteer schedule of ' . $host,
-        'siteUrl'         => $baseUrl,
-        'startUrl'        => $baseUrl . $appPath . '/index.html',
         'defaultLocation' => $baseName,
         'shareFilePrefix' => strtolower($baseName),
         'themeColor'      => '#1a3d2b',
@@ -133,7 +131,8 @@ function generateManifest(array $cfg): void
         'name'         => $b['appName']        ?? 'Volunteer Schedule',
         'short_name'   => $b['appShortName']   ?? 'Schedule',
         'description'  => $b['appDescription'] ?? '',
-        'start_url'    => $b['startUrl']       ?? './index.html',
+        'start_url'    => '../index.php',
+        'scope'        => '../',
         'display'      => 'standalone',
         'orientation'  => 'any',
         'background_color' => $b['themeColor'] ?? '#1a3d2b',
@@ -168,15 +167,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'save
         $b['appShortName']    = trim($_POST['appShortName']    ?? '');
         $b['appDescription']  = trim($_POST['appDescription']  ?? '');
         $b['themeColor']      = trim($_POST['themeColor']      ?? '#1a3d2b');
-        $b['siteUrl']         = trim($_POST['siteUrl']         ?? '');
-        $b['startUrl']        = trim($_POST['startUrl']        ?? '');
+        $b['foregroundColor'] = trim($_POST['foregroundColor'] ?? '#f8f5ee');
+        $b['accentColor']     = trim($_POST['accentColor']     ?? '#52b788');
+        $availThemes = array_diff(
+            array_map(fn($f) => pathinfo($f, PATHINFO_FILENAME), array_map('basename', glob(__DIR__ . '/../app/*.css') ?: [])),
+            ['overlap']
+        );
+        $themeVal  = preg_replace('/[^a-z0-9_-]/i', '', $_POST['theme'] ?? 'blockery');
+        $b['theme'] = in_array($themeVal, $availThemes) ? $themeVal : 'blockery';
         $b['defaultLocation'] = trim($_POST['defaultLocation'] ?? '');
         $b['shareFilePrefix'] = trim($_POST['shareFilePrefix'] ?? '');
 
         // Logo URL: uploaded file wins, otherwise use the text field
         $b['logoUrl'] = $uploadedLogoUrl ?? trim($_POST['logoUrl'] ?? '');
 
-        $d['shiftDurationMinutes'] = max(15, (int)($_POST['shiftDurationMinutes'] ?? 120));
         $d['timeZone']             = trim($_POST['timeZone']       ?? 'Europe/Amsterdam');
         $d['fontScale']            = max(0.5, min(3.0, (float)($_POST['fontScale']       ?? 1)));
         $d['printFontScale']       = max(0.5, min(4.0, (float)($_POST['printFontScale']  ?? 2)));
@@ -288,12 +292,79 @@ include '_header.php';
           <div style="display:flex;gap:8px;align-items:center">
             <input type="color" id="themeColor" name="themeColor"
                    value="<?= htmlspecialchars(val($b, 'themeColor', $def)) ?>"
-                   style="width:48px;height:36px;padding:2px;flex-shrink:0">
+                   style="width:48px;height:36px;padding:2px;flex-shrink:0"
+                   oninput="onThemeColorChange()">
             <input type="text" id="themeColorText"
                    value="<?= htmlspecialchars(val($b, 'themeColor', $def)) ?>"
-                   maxlength="7" placeholder="#rrggbb" style="font-family:monospace"
+                   maxlength="7" placeholder="#rrggbb" style="font-family:monospace;width:90px"
                    oninput="syncThemeColor(this)">
           </div>
+        </div>
+
+        <div class="field">
+          <label for="foregroundColor">Foreground color <span style="font-weight:400;color:var(--muted);font-size:.78rem">(text on theme color)</span></label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="color" id="foregroundColor" name="foregroundColor"
+                   value="<?= htmlspecialchars($b['foregroundColor'] ?? '#f8f5ee') ?>"
+                   style="width:48px;height:36px;padding:2px;flex-shrink:0"
+                   oninput="onFgColorChange()">
+            <input type="text" id="foregroundColorText"
+                   value="<?= htmlspecialchars($b['foregroundColor'] ?? '#f8f5ee') ?>"
+                   maxlength="7" placeholder="#rrggbb" style="font-family:monospace;width:90px"
+                   oninput="syncFgColor(this)">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="autoFgColor()"
+                    title="Pick white or black based on theme color luminance">Auto</button>
+            <span id="colorPreview" style="display:inline-flex;align-items:center;justify-content:center;
+                  gap:6px;padding:5px 12px;border-radius:7px;font-size:.8rem;font-weight:600;
+                  background:<?= htmlspecialchars(val($b, 'themeColor', $def)) ?>;
+                  color:<?= htmlspecialchars($b['foregroundColor'] ?? '#f8f5ee') ?>">
+              Aa preview
+            </span>
+          </div>
+          <span class="field-hint">Used for header text, nav icons and buttons on the theme background.</span>
+        </div>
+
+        <div class="field">
+          <label for="accentColor">Accent color <span style="font-weight:400;color:var(--muted);font-size:.78rem">(buttons, active tab, highlights)</span></label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="color" id="accentColor" name="accentColor"
+                   value="<?= htmlspecialchars($b['accentColor'] ?? '#52b788') ?>"
+                   style="width:48px;height:36px;padding:2px;flex-shrink:0"
+                   oninput="onAccentColorChange()">
+            <input type="text" id="accentColorText"
+                   value="<?= htmlspecialchars($b['accentColor'] ?? '#52b788') ?>"
+                   maxlength="7" placeholder="#rrggbb" style="font-family:monospace;width:90px"
+                   oninput="syncAccentColor(this)">
+            <span id="accentPreview" style="display:inline-flex;align-items:center;justify-content:center;
+                  gap:6px;padding:5px 14px;border-radius:7px;font-size:.8rem;font-weight:600;
+                  background:<?= htmlspecialchars($b['accentColor'] ?? '#52b788') ?>;
+                  color:<?= htmlspecialchars($b['foregroundColor'] ?? '#f8f5ee') ?>">
+              Button
+            </span>
+          </div>
+          <span class="field-hint">Applied to Today, Print and Share buttons and the active Week/Day tab.</span>
+        </div>
+
+        <div class="field span-2">
+          <label for="theme">Visual theme</label>
+          <?php
+          $appCssDir   = __DIR__ . '/../app/';
+          $cssFiles    = array_diff(array_map('basename', glob($appCssDir . '*.css') ?: []), ['overlap.css']);
+          sort($cssFiles);
+          $curTheme    = $b['theme'] ?? 'blockery';
+          ?>
+          <select id="theme" name="theme">
+            <?php foreach ($cssFiles as $file):
+              $name = pathinfo($file, PATHINFO_FILENAME); ?>
+            <option value="<?= htmlspecialchars($name) ?>" <?= $curTheme === $name ? 'selected' : '' ?>>
+              <?= htmlspecialchars(ucfirst($name)) ?>
+            </option>
+            <?php endforeach; ?>
+            <?php if (empty($cssFiles)): ?>
+            <option value="blockery" selected>Blockery (default)</option>
+            <?php endif; ?>
+          </select>
+          <span class="field-hint">All <code>.css</code> files in <code>app/</code> (excluding overlap.css) appear here automatically. Drop your own <code>app/mytheme.css</code> to see it in this list.</span>
         </div>
 
         <div class="field">
@@ -301,20 +372,6 @@ include '_header.php';
           <input type="text" id="defaultLocation" name="defaultLocation"
                  value="<?= htmlspecialchars(val($b, 'defaultLocation', $def)) ?>"
                  placeholder="<?= htmlspecialchars($def['defaultLocation']) ?>">
-        </div>
-
-        <div class="field">
-          <label for="siteUrl">Site URL</label>
-          <input type="url" id="siteUrl" name="siteUrl"
-                 value="<?= htmlspecialchars(val($b, 'siteUrl', $def)) ?>"
-                 placeholder="<?= htmlspecialchars($def['siteUrl']) ?>">
-        </div>
-
-        <div class="field">
-          <label for="startUrl">Start URL (PWA)</label>
-          <input type="url" id="startUrl" name="startUrl"
-                 value="<?= htmlspecialchars(val($b, 'startUrl', $def)) ?>"
-                 placeholder="<?= htmlspecialchars($def['startUrl']) ?>">
         </div>
 
         <div class="field">
@@ -341,13 +398,6 @@ include '_header.php';
     <div class="card-header"><h3>Display settings</h3></div>
     <div class="card-body">
       <div class="form-grid cols-3">
-
-        <div class="field">
-          <label for="shiftDurationMinutes">Default shift duration (min)</label>
-          <input type="number" id="shiftDurationMinutes" name="shiftDurationMinutes"
-                 min="15" max="1440" step="15"
-                 value="<?= (int)($d['shiftDurationMinutes'] ?? 120) ?>">
-        </div>
 
         <div class="field">
           <label for="timeZone">Timezone</label>
@@ -418,12 +468,76 @@ include '_header.php';
 <?php include '_footer.php'; ?>
 
 <script>
-const tc = document.getElementById('themeColor');
-const tt = document.getElementById('themeColorText');
-if (tc) tc.addEventListener('input', () => { tt.value = tc.value; });
-function syncThemeColor(input) {
-  if (/^#[0-9a-fA-F]{6}$/.test(input.value) && tc) tc.value = input.value;
+const tc   = document.getElementById('themeColor');
+const tt   = document.getElementById('themeColorText');
+const fc   = document.getElementById('foregroundColor');
+const ft   = document.getElementById('foregroundColorText');
+const ac   = document.getElementById('accentColor');
+const at   = document.getElementById('accentColorText');
+const prev = document.getElementById('colorPreview');
+const aprev = document.getElementById('accentPreview');
+
+function updatePreview() {
+  if (!prev) return;
+  prev.style.background = tc ? tc.value : '#1a3d2b';
+  prev.style.color      = fc ? fc.value : '#f8f5ee';
 }
+function updateAccentPreview() {
+  if (!aprev) return;
+  aprev.style.background = ac ? ac.value : '#52b788';
+  aprev.style.color      = fc ? fc.value : '#f8f5ee';
+}
+
+function onThemeColorChange() {
+  if (tt) tt.value = tc.value;
+  updatePreview();
+}
+function onFgColorChange() {
+  if (ft) ft.value = fc.value;
+  updatePreview();
+  updateAccentPreview();
+}
+function onAccentColorChange() {
+  if (at) at.value = ac.value;
+  updateAccentPreview();
+}
+
+function syncThemeColor(input) {
+  if (/^#[0-9a-fA-F]{6}$/i.test(input.value) && tc) {
+    tc.value = input.value;
+    updatePreview();
+  }
+}
+function syncFgColor(input) {
+  if (/^#[0-9a-fA-F]{6}$/i.test(input.value) && fc) {
+    fc.value = input.value;
+    updatePreview();
+    updateAccentPreview();
+  }
+}
+function syncAccentColor(input) {
+  if (/^#[0-9a-fA-F]{6}$/i.test(input.value) && ac) {
+    ac.value = input.value;
+    updateAccentPreview();
+  }
+}
+
+// Auto: pick white or black based on relative luminance of the theme color
+function autoFgColor() {
+  if (!tc || !fc) return;
+  const hex = tc.value.replace('#','');
+  const r = parseInt(hex.slice(0,2),16)/255;
+  const g = parseInt(hex.slice(2,4),16)/255;
+  const b = parseInt(hex.slice(4,6),16)/255;
+  // sRGB → linear luminance
+  const lin = v => v <= 0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+  const lum = 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
+  const chosen = lum > 0.179 ? '#1a1a1a' : '#ffffff';
+  fc.value = chosen;
+  if (ft) ft.value = chosen;
+  updatePreview();
+}
+
 // When a file is chosen, clear the URL field (upload takes precedence)
 const logoFile = document.getElementById('logoFile');
 const logoUrl  = document.getElementById('logoUrl');

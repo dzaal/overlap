@@ -8,22 +8,34 @@ $activePage = $activePage ?? '';
 // ── Read theme color from config ──────────────────────────────────────────────
 $_themeColor  = '#1a3d2b';
 $_accentColor = '#52b788';
+$_fgColor     = '#f8f5ee';
 
 if (class_exists('Config')) {
     try {
         $_cfg = Config::read();
-        $_tc  = $_cfg['branding']['themeColor'] ?? '';
+        $_b   = $_cfg['branding'] ?? [];
+
+        $_tc = $_b['themeColor'] ?? '';
         if (preg_match('/^#[0-9a-fA-F]{6}$/i', $_tc)) {
             $_themeColor = $_tc;
-            // Derive accent: blend theme color 45 % toward white
+            // Derive accent from theme color (45% toward white) as fallback
             $_r = hexdec(substr($_tc, 1, 2));
             $_g = hexdec(substr($_tc, 3, 2));
-            $_b = hexdec(substr($_tc, 5, 2));
+            $_b2 = hexdec(substr($_tc, 5, 2));
             $_accentColor = sprintf('#%02x%02x%02x',
-                min(255, (int)($_r + (255 - $_r) * 0.45)),
-                min(255, (int)($_g + (255 - $_g) * 0.45)),
-                min(255, (int)($_b + (255 - $_b) * 0.45))
+                min(255, (int)($_r  + (255 - $_r)  * 0.45)),
+                min(255, (int)($_g  + (255 - $_g)  * 0.45)),
+                min(255, (int)($_b2 + (255 - $_b2) * 0.45))
             );
+        }
+        // Use explicit accent color if configured
+        $_ac = $_b['accentColor'] ?? '';
+        if (preg_match('/^#[0-9a-fA-F]{6}$/i', $_ac)) {
+            $_accentColor = $_ac;
+        }
+        $_fgc = $_b['foregroundColor'] ?? '';
+        if (preg_match('/^#[0-9a-fA-F]{6}$/i', $_fgc)) {
+            $_fgColor = $_fgc;
         }
     } catch (Throwable $e) { /* keep defaults */ }
 }
@@ -46,9 +58,25 @@ $navItems = [
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle) ?> – Overlap Beheer</title>
 <link rel="stylesheet" href="../assets/css/admin.css">
-<style>:root{--green:<?= htmlspecialchars($_themeColor) ?>;--accent:<?= htmlspecialchars($_accentColor) ?>}</style>
+<style>:root{--green:<?= htmlspecialchars($_themeColor) ?>;--accent:<?= htmlspecialchars($_accentColor) ?>;--nav-fg:<?= htmlspecialchars($_fgColor) ?>}</style>
+<?php
+$_faviconUrl = !empty($_b['logoUrl']) ? $_b['logoUrl'] : '../app/icon-192.png';
+?>
+<link rel="icon" href="<?= htmlspecialchars($_faviconUrl) ?>">
 </head>
 <body>
+
+<div id="mob-bar">
+  <button id="navToggle" aria-label="Menu" onclick="document.body.classList.toggle('nav-open')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <span class="mob-title"><?= htmlspecialchars($pageTitle) ?> – Overlap</span>
+</div>
+<div id="nav-overlay" onclick="document.body.classList.remove('nav-open')"></div>
 
 <nav id="nav">
   <div class="nav-logo">
@@ -64,7 +92,7 @@ $navItems = [
     </li>
     <?php endforeach; ?>
     <li style="margin-top:12px;border-top:1px solid rgba(255,255,255,.1);padding-top:12px;">
-      <a href="../index.html" target="_blank">
+      <a href="../index.php" target="_blank">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         View schedule
       </a>

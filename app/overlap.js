@@ -1127,18 +1127,31 @@ function assignColumns(evList, maxCols=3){
       }
     }
   }
-  // Per-event total: max col+1 among events that truly overlap with this one
-  result.forEach(r=>{
+  // Compute total via connected components of the overlap graph.
+  // Events in separate time groups (no mutual overlap) get independent totals,
+  // so e.g. afternoon shifts that reuse morning columns start from col 0 width.
+  const evMs=(r)=>{
     const s=r.ev.start._ad?0:r.ev.start.getTime();
     const e=r.ev.end?(r.ev.end._ad?s+86400000:r.ev.end.getTime()):s+3600000;
-    let mx=r.col;
-    result.forEach(o=>{
-      if(o===r||o.overflow)return;
-      const os=o.ev.start._ad?0:o.ev.start.getTime();
-      const oe=o.ev.end?(o.ev.end._ad?os+86400000:o.ev.end.getTime()):os+3600000;
-      if(os<e&&oe>s)mx=Math.max(mx,o.col);
-    });
-    r.total=mx+1;
+    return{s,e};
+  };
+  const overlaps=(r,o)=>{
+    const{s,e}=evMs(r),{s:os,e:oe}=evMs(o);
+    return os<e&&oe>s;
+  };
+  const visited=new Set();
+  result.forEach(r=>{
+    if(r.overflow||visited.has(r))return;
+    // BFS to find connected component
+    const comp=[],queue=[r];
+    while(queue.length){
+      const cur=queue.shift();
+      if(visited.has(cur))continue;
+      visited.add(cur);comp.push(cur);
+      result.forEach(o=>{if(!o.overflow&&!visited.has(o)&&overlaps(cur,o))queue.push(o);});
+    }
+    const maxCol=Math.max(...comp.map(c=>c.col));
+    comp.forEach(c=>c.total=maxCol+1);
   });
   return result;
 }
@@ -1384,17 +1397,8 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
           leftPct=afspraakSlot.left;
           rightPct=afspraakSlot.right;
         } else {
-        const hasMO=!mainHidden&&mainEvs.some(me=>{
-          const ms=me.start.getTime(),mend=me.end?me.end.getTime():ms+3600000;
-          const es=ev.start.getTime(),ee=ev.end?ev.end.getTime():es+3600000;
-          return ms<ee&&mend>es;
-        });
-        if(hasMO){
-          const cw=75/total;leftPct=25+col*cw;rightPct=(total-col-1)*cw;
-        } else {
-          const gap=total<=2?2:1,cw=(100-gap*(total-1))/total;
-          leftPct=col*(cw+gap);rightPct=100-leftPct-cw;
-        }
+        const gap=total<=2?2:1,cw=(100-gap*(total-1))/total;
+        leftPct=col*(cw+gap);rightPct=100-leftPct-cw;
         }
       }
 
@@ -1619,8 +1623,8 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     }
   });
 
-  // Day-view: allow more columns (up to 6); week-view: cap at 3; print: unlimited
-  const maxCols = window._printMaxCols || (vm==='day' ? 6 : 3);
+  // Cap at 3 crew columns in all views; overflow strip handles the rest
+  const maxCols = window._printMaxCols || 3;
 
   let animIdx=0;
   // Collect overflow events per day column for the overflow strip
@@ -1628,7 +1632,12 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   colDefs.forEach(cd=>{ overflowByCol[cd.days[0].toDateString()]=[] });
 
   Object.entries(colEvents).forEach(([colKey,evList])=>{
-    const assigned=assignColumns(evList, maxCols);
+    const mainEvs=evList.filter(ev=>ev._cal==='main');
+    const crewEvs=evList.filter(ev=>ev._cal!=='main');
+    const hasMainToday=!mainHidden&&mainEvs.length>0;
+    // Main events render full-width at z-index:2; crew events get all maxCols slots to themselves
+    const crewAssigned=assignColumns(crewEvs,maxCols);
+    const assigned=[...mainEvs.map(ev=>({ev,col:0,total:1,overflow:false})),...crewAssigned];
     assigned.forEach(({ev,col,total,overflow})=>{
       if(overflow){
         // Don't place in grid — collect for overflow strip
@@ -1656,45 +1665,18 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       // Width calculation
       let leftPct,rightPct;
       if(ev._cal==='afspraken'){
-        // Appointments sit below shifts as a full-width context layer.
         leftPct=0; rightPct=0;
-      } else if(mainHidden){
-        // Events hidden: clean side-by-side full width
-        const gap=total<=2?2:1;
-        const cellW=(100-gap*(total-1))/total;
-        leftPct=col*(cellW+gap);
-        rightPct=100-leftPct-cellW;
       } else if(ev._cal==='main'){
-        // Main/background event: always full width
         leftPct=0; rightPct=0;
       } else {
-        const afspraakSlot=rightFloatShiftSlot(ev,evList);
-        if(afspraakSlot){
-          leftPct=afspraakSlot.left;
-          rightPct=afspraakSlot.right;
-        } else {
-        // Check if a main event overlaps this shift
-        const hasMainOverlap=assigned.some(r2=>{
-          if(r2.overflow||r2.ev._cal!=='main')return false;
-          const as=r2.ev.start.getTime(),ae=r2.ev.end?r2.ev.end.getTime():as+3600000;
-          const bs=ev.start.getTime(),be=ev.end?ev.end.getTime():bs+3600000;
-          return as<be&&ae>bs;
-        });
-        if(hasMainOverlap){
-          // Non-main events use 25%–100%, subdivided among themselves
-          // Main event is at col=0; volunteer cols start at 1
-          const nonMainTotal=total-1;
-          const nonMainCol=col-1;
-          if(nonMainTotal<=0){leftPct=25;rightPct=0;}
-          else{const cw=75/nonMainTotal;leftPct=25+nonMainCol*cw;rightPct=(nonMainTotal-nonMainCol-1)*cw;}
-        } else {
-          // No main event overlap: clean side-by-side
-          const gap=total<=2?2:1;
-          const cellW=(100-gap*(total-1))/total;
-          leftPct=col*(cellW+gap);
-          rightPct=100-leftPct-cellW;
-        }
-        }
+        // When events shown and this day has a main event, reserve 25% left
+        const CL=hasMainToday?25:0, CW=100-CL;
+        // Extends-to-right: each shift starts at its step, fills to the right edge
+        // Higher col events sit on top via z-index, making text readable
+        leftPct=CL+col*(CW/total); rightPct=0;
+        dv.dataset.crewCol=String(col);
+        dv.dataset.crewTotal=String(total);
+        dv.dataset.hasMain=hasMainToday?'1':'0';
       }
 
       dv.style.left=`${leftPct}%`;dv.style.right=`${rightPct}%`;
@@ -1745,7 +1727,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       const isLastCol=(i===colDefs.length-1);
       const cell=document.createElement('div');
       cell.className='overflow-strip';
-      cell.style.cssText=`border-right:${isLastCol?'none':'2.5px solid #222'};border-bottom:2.5px solid #222`;
+      cell.style.cssText=`border-right:${isLastCol?'none':'2.5px solid #222'};border-bottom:2px solid #b0b8a8`;
       if(ovEvs.length>0){
         ovEvs.forEach((ev,idx)=>{
           const[bg,tx,ac]=PALETTES[nameHash(ev.title||'')];
@@ -1865,11 +1847,26 @@ document.getElementById('bD').onclick=()=>{vm='day';document.getElementById('bD'
 })();
 
 // Toggle main layer visibility
-document.getElementById('mainLayerToggle')?.addEventListener('change', (e) => {
-  document.body.classList.toggle('main-layer-hidden', !e.target.checked);
-  document.body.classList.add('layer-toggling');
-  render(0);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>document.body.classList.remove('layer-toggling')));
+function _animateCrewPositions(toHidden){
+  const CL=toHidden?0:25,CW=100-CL;
+  document.querySelectorAll('.ev:not(.main-event):not(.afspraak)').forEach(el=>{
+    if(el.dataset.crewCol===undefined||el.dataset.hasMain!=='1')return;
+    const cc=parseInt(el.dataset.crewCol,10),ct=parseInt(el.dataset.crewTotal,10);
+    el.style.left=`${CL+cc*(CW/ct)}%`;
+    el.style.right='0%';
+  });
+}
+document.getElementById('mainLayerToggle')?.addEventListener('change',(e)=>{
+  const nowHidden=!e.target.checked;
+  if(nowHidden){
+    // Hiding: animate shifts first, then hide main events after animation
+    _animateCrewPositions(true);
+    setTimeout(()=>document.body.classList.add('main-layer-hidden'),260);
+  } else {
+    // Showing: reveal main events first, then animate shifts into position
+    document.body.classList.remove('main-layer-hidden');
+    setTimeout(()=>_animateCrewPositions(false),150);
+  }
 });
 
 // Initialize login & editing controls
@@ -1877,49 +1874,69 @@ initEditFeatures();
 
 // ── DATEPICKER ───────────────────────────────────────────
 (()=>{
-  // Locale-aware short weekday names Mon–Sun (2023-01-02 = Monday)
-  const _dpDow = Array.from({length:7},(_,i)=>new Intl.DateTimeFormat(_locale,{weekday:'short'}).format(new Date(2023,0,2+i)));
-  const _dpMonFmt = new Intl.DateTimeFormat(_locale,{month:'long',year:'numeric'});
+  // Read week start from config (0=Sun, 1=Mon)
+  const _wsd=((window.OVERLAP_CONFIG||window.ROOSTER_CONFIG||{}).defaults||{}).weekStartDay??1;
+  // Locale-aware short weekday names ordered by week start day
+  const _dpDow=Array.from({length:7},(_,i)=>new Intl.DateTimeFormat(_locale,{weekday:'short'}).format(new Date(2023,0,(_wsd===0?1:2)+i)));
+  const _dpMonFmt=new Intl.DateTimeFormat(_locale,{month:'long',year:'numeric'});
   const dp=document.getElementById('datePicker');
-  let dpDate=new Date(); // month currently shown in picker
+  let dpDate=new Date();
 
   function renderPicker(){
     const today=new Date();today.setHours(0,0,0,0);
     const y=dpDate.getFullYear(),m=dpDate.getMonth();
     document.getElementById('dpMonthLabel').textContent=_dpMonFmt.format(new Date(y,m,1));
 
-    // Day-of-week headers starting Monday
-    let g=_dpDow.map(d=>`<div class="dp-dow">${d}</div>`).join('');
-
-    // First day of month; pad to Monday start
     const first=new Date(y,m,1);
-    const startDow=first.getDay()===0?6:first.getDay()-1; // 0=Mon
+    // Offset of first day from week start (0 = no padding needed)
+    const startDow=_wsd===0?first.getDay():(first.getDay()===0?6:first.getDay()-1);
     const daysInMonth=new Date(y,m+1,0).getDate();
-
-    // Prev month padding
     const daysInPrev=new Date(y,m,0).getDate();
-    for(let i=startDow-1;i>=0;i--) g+=`<div class="dp-day dp-other">${daysInPrev-i}</div>`;
 
-    // Days of month
-    for(let d=1;d<=daysInMonth;d++){
-      const dd=new Date(y,m,d);dd.setHours(0,0,0,0);
-      const isToday=dd.getTime()===today.getTime();
-      // Is this day within the currently shown anchor?
-      const isSel=vm==='week'
-        ? (dd>=sowk(anc)&&dd<=addD(sowk(anc),6))
-        : same(dd,anc);
-      const cls='dp-day'+(isToday?' dp-today':'')+(isSel&&!isToday?' dp-sel':'');
-      g+=`<div class="${cls}" data-y="${y}" data-m="${m}" data-d="${d}">${d}</div>`;
+    // Build flat cell array: prev-month padding + current month + next-month padding
+    const cells=[];
+    for(let i=startDow-1;i>=0;i--) cells.push({day:daysInPrev-i,other:true,date:new Date(y,m-1,daysInPrev-i)});
+    for(let d=1;d<=daysInMonth;d++) cells.push({day:d,other:false,date:new Date(y,m,d)});
+    const rem=cells.length%7===0?0:7-cells.length%7;
+    for(let d=1;d<=rem;d++) cells.push({day:d,other:true,date:new Date(y,m+1,d)});
+
+    // Header row: week-number label + day name columns
+    let g=`<div class="dp-wk-hdr">Wk</div>`+_dpDow.map(d=>`<div class="dp-dow">${d}</div>`).join('');
+
+    for(let i=0;i<cells.length;i++){
+      if(i%7===0){
+        // ISO weeks start Monday; for Sunday-start advance Sunday→Monday before computing
+        let wd=cells[i].date;
+        const wkStartIso=cells[i].date.toISOString().slice(0,10);
+        if(_wsd===0&&wd.getDay()===0){wd=new Date(wd);wd.setDate(wd.getDate()+1);}
+        g+=`<div class="dp-wk-num" data-wkstart="${wkStartIso}">${getWeekNumber(wd)}</div>`;
+      }
+      const c=cells[i];
+      if(c.other){
+        g+=`<div class="dp-day dp-other">${c.day}</div>`;
+      } else {
+        const dd=new Date(y,m,c.day);dd.setHours(0,0,0,0);
+        const isToday=dd.getTime()===today.getTime();
+        const isSel=vm==='week'?(dd>=sowk(anc)&&dd<=addD(sowk(anc),6)):same(dd,anc);
+        const cls='dp-day'+(isToday?' dp-today':'')+(isSel&&!isToday?' dp-sel':'');
+        g+=`<div class="${cls}" data-y="${y}" data-m="${m}" data-d="${c.day}">${c.day}</div>`;
+      }
     }
-    // Next month padding to fill row
-    const total=startDow+daysInMonth;
-    const rem=total%7===0?0:7-(total%7);
-    for(let d=1;d<=rem;d++) g+=`<div class="dp-day dp-other">${d}</div>`;
-
     document.getElementById('dpGrid').innerHTML=g;
 
-    // Click on a day
     document.getElementById('dpGrid').onclick=e=>{
+      // Week number click → jump to that week
+      const wkEl=e.target.closest('.dp-wk-num[data-wkstart]');
+      if(wkEl){
+        anc=sowk(new Date(wkEl.dataset.wkstart+'T00:00:00'));
+        vm='week';
+        document.getElementById('bW').classList.add('on');
+        document.getElementById('bD').classList.remove('on');
+        render(0);
+        hidePicker();
+        return;
+      }
+      // Day click
       const el=e.target.closest('.dp-day');
       if(!el||el.classList.contains('dp-other'))return;
       const chosen=new Date(+el.dataset.y,+el.dataset.m,+el.dataset.d);
@@ -1959,6 +1976,20 @@ initEditFeatures();
   // Close on outside click
   document.addEventListener('click',e=>{
     if(!dp.contains(e.target)&&e.target.id!=='tBDrop')hidePicker();
+  });
+
+  // Swipe left/right to go to next/prev month
+  let _dpTx=null;
+  dp.addEventListener('touchstart',e=>{_dpTx=e.touches[0].clientX;},{passive:true});
+  dp.addEventListener('touchend',e=>{
+    if(_dpTx===null)return;
+    const dx=e.changedTouches[0].clientX-_dpTx;
+    _dpTx=null;
+    if(Math.abs(dx)<40)return;
+    dpDate=dx<0
+      ?new Date(dpDate.getFullYear(),dpDate.getMonth()+1,1)
+      :new Date(dpDate.getFullYear(),dpDate.getMonth()-1,1);
+    renderPicker();
   });
 })();
 
@@ -2034,9 +2065,15 @@ let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{
   // Don't call preventDefault — that suppresses the mini-infobar on Android
   deferredPrompt=e;
-  const b=document.getElementById('installBtn');b.style.display='flex';
+  const b=document.getElementById('installBtn');
+  if(b) b.style.display='flex';
+  const s=document.getElementById('installSection');
+  if(s) s.style.display='';
 });
-window.addEventListener('appinstalled',()=>{document.getElementById('installBtn').style.display='none';});
+window.addEventListener('appinstalled',()=>{
+  const b=document.getElementById('installBtn');if(b)b.style.display='none';
+  const s=document.getElementById('installSection');if(s)s.style.display='none';
+});
 
 document.getElementById('installBtn').addEventListener('click',async()=>{
   if(deferredPrompt){
@@ -2140,20 +2177,22 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
 
   function showPrintMenu(){
     const btn=document.getElementById('printDrop');
-    const r=btn.getBoundingClientRect();
-    menu.style.top=(r.bottom+4)+'px';
-    menu.style.left=Math.min(r.left,window.innerWidth-180)+'px';
+    if(btn){
+      const r=btn.getBoundingClientRect();
+      menu.style.top=(r.bottom+4)+'px';
+      menu.style.left=Math.min(r.left,window.innerWidth-180)+'px';
+    }
     menu.style.display='block';
   }
   function hidePrintMenu(){ menu.style.display='none'; }
 
-  document.getElementById('printLandBtn').addEventListener('click',()=>printAs('landscape'));
-  document.getElementById('printDrop').addEventListener('click',e=>{
+  document.getElementById('printLandBtn')?.addEventListener('click',()=>printAs('landscape'));
+  document.getElementById('printDrop')?.addEventListener('click',e=>{
     e.stopPropagation();
     menu.style.display==='none'?showPrintMenu():hidePrintMenu();
   });
-  document.getElementById('printLandOpt').addEventListener('click',()=>{ hidePrintMenu(); printAs('landscape'); });
-  document.getElementById('printPortOpt').addEventListener('click',()=>{ hidePrintMenu(); printAs('portrait'); });
+  document.getElementById('printLandOpt')?.addEventListener('click',()=>{ hidePrintMenu(); printAs('landscape'); });
+  document.getElementById('printPortOpt')?.addEventListener('click',()=>{ hidePrintMenu(); printAs('portrait'); });
   document.addEventListener('click',e=>{
     if(!e.target.closest('#printBtnGroup')&&!e.target.closest('#printMenu')) hidePrintMenu();
   });
@@ -2317,8 +2356,18 @@ applyLocaleUI();
 
 fetchEvents();
 
-// Auto-refresh every 15 minutes (silent — no skeleton, calendar stays visible)
-setInterval(() => fetchEvents(true), 15 * 60 * 1000);
+// Auto-refresh — interval configurable via window._overlapRefreshMin (0 = off)
+var _refreshTimer = null;
+(function startRefresh(){
+  var min = (window._overlapRefreshMin !== undefined) ? window._overlapRefreshMin : 15;
+  clearInterval(_refreshTimer);
+  if(min > 0) _refreshTimer = setInterval(()=>fetchEvents(true), min * 60 * 1000);
+})();
+window._setRefreshInterval = function(min){
+  window._overlapRefreshMin = min;
+  clearInterval(_refreshTimer);
+  if(min > 0) _refreshTimer = setInterval(()=>fetchEvents(true), min * 60 * 1000);
+};
 
 // ── EVENT ANIMATION STYLE SWITCHER ───────────────────────
 // Tap the period label (#pl) to cycle: Grow → Rise → Fade → Grow…
