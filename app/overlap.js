@@ -185,7 +185,7 @@ function applyLocaleUI(){
 
 let HH=40; // px per hour on screen; day view recalculates this from viewport height
 
-function updateDayViewMetrics(hourCount){
+function updateDayViewMetrics(hourCount, maxCrewCols=1){
   if(vm!=='day' || window._printMaxCols){
     HH=40;
     document.body.style.setProperty('--hh', `${HH}px`);
@@ -207,9 +207,14 @@ function updateDayViewMetrics(hourCount){
     Math.min(maxHourHeight, Math.floor(usableGridH / Math.max(hourCount, 1)))
   );
 
+  // Base width = A4 portrait ratio; widen by ~90px per crew column beyond 4
   const a4Height = reserveH + hourCount * HH;
-  const targetWidth = Math.floor(a4Height / Math.SQRT2);
-  const boundedWidth = Math.max(280, Math.min(targetWidth, viewportW - 20, 620));
+  const a4Width = Math.floor(a4Height / Math.SQRT2);
+  const TIME_LABEL = 52, COL_W = 90, BASE_COLS = 4;
+  const extraWidth = Math.max(0, maxCrewCols - BASE_COLS) * COL_W;
+  const targetWidth = a4Width + extraWidth;
+  const maxW = Math.max(620, TIME_LABEL + maxCrewCols * COL_W + 24);
+  const boundedWidth = Math.max(280, Math.min(targetWidth, viewportW - 20, maxW));
 
   document.body.style.setProperty('--hh', `${HH}px`);
   document.body.style.setProperty('--day-view-width', `${boundedWidth}px`);
@@ -924,7 +929,16 @@ function renderInto(container, anchorDate){
   exp.forEach(ev=>{const ds=new Date(ev.start);ds.setHours(0,0,0,0);const k=ds.toDateString();if(byDay[k]!==undefined)byDay[k].push(ev)});
   if(vm==='day'){
     const {sh:daySh,eh:dayEh}=dynamicHoursForCols(exp,colDefs);
-    updateDayViewMetrics(dayEh-daySh);
+    // Count max concurrent crew columns to decide how wide the day view should be
+    const _dayKey=colDefs[0].days[0].toDateString();
+    const _dayCrewEvs=exp.filter(ev=>{
+      if(ev.start._ad||ev._cal==='main')return false;
+      const _d=new Date(ev.start);_d.setHours(0,0,0,0);
+      return _d.toDateString()===_dayKey;
+    });
+    const _assigned=assignColumns(_dayCrewEvs,10);
+    const _maxCols=_assigned.length?Math.max(..._assigned.map(a=>a.col))+1:1;
+    updateDayViewMetrics(dayEh-daySh,_maxCols);
   } else {
     updateDayViewMetrics(0);
   }
