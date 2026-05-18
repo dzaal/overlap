@@ -929,15 +929,19 @@ function renderInto(container, anchorDate){
   exp.forEach(ev=>{const ds=new Date(ev.start);ds.setHours(0,0,0,0);const k=ds.toDateString();if(byDay[k]!==undefined)byDay[k].push(ev)});
   if(vm==='day'){
     const {sh:daySh,eh:dayEh}=dynamicHoursForCols(exp,colDefs);
-    // Count max concurrent crew columns to decide how wide the day view should be
-    const _dayKey=colDefs[0].days[0].toDateString();
+    // Count max concurrent crew columns to decide how wide the day view should be.
+    // Include cross-midnight continuation events (start before this day, end after midnight).
+    const _dayStart=new Date(colDefs[0].days[0]);_dayStart.setHours(0,0,0,0);
+    const _dayEnd=new Date(colDefs[0].days[0]);_dayEnd.setHours(23,59,59,999);
     const _dayCrewEvs=exp.filter(ev=>{
       if(ev.start._ad||ev._cal==='main')return false;
-      const _d=new Date(ev.start);_d.setHours(0,0,0,0);
-      return _d.toDateString()===_dayKey;
+      const evS=ev.start.getTime();
+      const evE=ev.end?ev.end.getTime():evS+3600000;
+      return evS<=_dayEnd.getTime()&&evE>_dayStart.getTime();
     });
-    const _assigned=assignColumns(_dayCrewEvs,10);
+    const _assigned=assignColumns(_dayCrewEvs,20);
     const _maxCols=_assigned.length?Math.max(..._assigned.map(a=>a.col))+1:1;
+    window._dayMaxCols=_maxCols;
     updateDayViewMetrics(dayEh-daySh,_maxCols);
   } else {
     updateDayViewMetrics(0);
@@ -1007,6 +1011,8 @@ function renderInto(container, anchorDate){
 function render(dir=0){
   document.body.classList.toggle('view-day', vm==='day');
   document.body.classList.toggle('view-week', vm==='week');
+  document.getElementById('bW').classList.toggle('on', vm==='week');
+  document.getElementById('bD').classList.toggle('on', vm==='day');
   const inner  = document.getElementById('slideInner');
   const panCur = document.getElementById('panelCur');
   const panPrev= document.getElementById('panelPrev');
@@ -1645,8 +1651,8 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     }
   });
 
-  // Day view (single column) can fit more crew columns; week view caps at 3
-  const maxCols = window._printMaxCols || (colDefs.length === 1 ? 5 : 3);
+  // Day view: use 20 so continuation events never overflow; week view caps at 3
+  const maxCols = window._printMaxCols || (colDefs.length === 1 ? 20 : 3);
 
   let animIdx=0;
   // Collect overflow events per day column for the overflow strip
@@ -1659,6 +1665,11 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     const hasMainToday=!mainHidden&&mainEvs.length>0;
     // Main events render full-width at z-index:2; crew events get all maxCols slots to themselves
     const crewAssigned=assignColumns(crewEvs,maxCols);
+    // In day view: if actual columns exceed initial estimate (due to continuations), widen the panel
+    if(colDefs.length===1&&!window._printMaxCols&&crewAssigned.length){
+      const _ac=Math.max(...crewAssigned.map(a=>a.col))+1;
+      if(_ac>(window._dayMaxCols||1)){window._dayMaxCols=_ac;updateDayViewMetrics(eh-sh,_ac);}
+    }
     const assigned=[...mainEvs.map(ev=>({ev,col:0,total:1,overflow:false})),...crewAssigned];
     assigned.forEach(({ev,col,total,overflow})=>{
       if(overflow){
