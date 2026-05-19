@@ -54,7 +54,7 @@ if (!$allowed) {
 // ── Cache ────────────────────────────────────────────────────────────────────
 $cacheDir  = sys_get_temp_dir();
 $cacheFile = $cacheDir . '/overlap_ics_' . md5($requestedUrl) . '.txt';
-$cacheTtl  = 900; // 15 minutes
+$cacheTtl  = 60; // 1 minute
 
 if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
     $data = file_get_contents($cacheFile);
@@ -79,5 +79,5 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
 
 header('Content-Type: text/calendar; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
-header('Cache-Control: max-age=900, public');
+header('Cache-Control: no-store');
 echo $data;
