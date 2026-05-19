@@ -1926,7 +1926,8 @@ initEditFeatures();
       if(i%7===0){
         // ISO weeks start Monday; for Sunday-start advance Sunday→Monday before computing
         let wd=cells[i].date;
-        const wkStartIso=cells[i].date.toISOString().slice(0,10);
+        const _d=cells[i].date;
+        const wkStartIso=`${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
         if(_wsd===0&&wd.getDay()===0){wd=new Date(wd);wd.setDate(wd.getDate()+1);}
         g+=`<div class="dp-wk-num" data-wkstart="${wkStartIso}">${getWeekNumber(wd)}</div>`;
       }
@@ -2128,37 +2129,33 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
       : `${UI.week} ${wk} · ${s.getDate()} ${MN[s.getMonth()]} – ${e.getDate()} ${MN[e.getMonth()]} ${e.getFullYear()}`;
     document.getElementById('printMeta').textContent=label;
 
-    pageStyle.textContent=orientation==='landscape'
+    const pageRule=orientation==='landscape'
       ? '@page{size:A4 landscape;margin:4mm 6mm}'
       : '@page{size:A4 portrait;margin:8mm 8mm}';
+    pageStyle.textContent=pageRule;
 
-    // Compute zoom to fit on one page
+    // Page dimensions in px (used for zoom calculation only — zoom applied via @media print CSS)
     // A4 landscape: 297×210mm, @page margin 4mm top/bottom 6mm left/right → 285×202mm usable
     // A4 portrait:  210×297mm, @page margin 8mm all sides              → 194×281mm usable
-    // Subtract a few mm as safety margin so browsers never clip the edge
     const mmW = orientation==='landscape' ? 280 : 190;
     const mmH = orientation==='landscape' ? 196 : 275;
     const pxPerMm = 96/25.4;
     const pageW = mmW * pxPerMm;
     const pageH = mmH * pxPerMm;
 
-    // Measure current rendered height of panelCur (includes all rows)
     const panel = document.getElementById('panelCur');
-    const contentH = panel.scrollHeight + 20; // +20 for print header
-    const contentW = panel.scrollWidth;
-
-    const zoomH = pageH / contentH;
-    const zoomW = pageW / contentW;
-    const zoom  = Math.min(zoomH, zoomW, 1); // never zoom in, only out
-
     document.body.classList.remove('print-landscape','print-portrait');
     document.body.classList.add('print-'+orientation);
-    panel.style.zoom = zoom;
-    document.getElementById('printHeader').style.zoom = zoom;
 
     // Re-render with unlimited columns so all shifts print
     window._printMaxCols = 99;
     renderInto(panel, anc);
+
+    // In day view, expand width to fit all printed columns (unconstrained by screen width)
+    if (vm === 'day') {
+      const _printW = 52 + (window._dayMaxCols || 1) * 168;
+      document.body.style.setProperty('--day-view-width', _printW + 'px');
+    }
 
     // Wait one RAF so the compact-header height-sync RAF runs first,
     // then recalculate zoom from the final layout and print.
@@ -2169,22 +2166,23 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
       const hdrH = phEl.offsetHeight;
       phEl.style.cssText='';
 
-      const contentH2 = panel.scrollHeight + hdrH + 8; // +8 small gap between header and grid
+      const contentH2 = panel.scrollHeight + hdrH + 8;
       const contentW2 = panel.scrollWidth;
-      const zoom2 = Math.min(pageH/contentH2, pageW/contentW2, 1);
-      panel.style.zoom = zoom2;
-      document.getElementById('printHeader').style.zoom = zoom2;
+      const zoom2 = Math.min(pageH/contentH2, pageW/contentW2);
+      // Zoom applied only in @media print so the screen is never visually affected
+      pageStyle.textContent=pageRule+`\n@media print{#panelCur,#printHeader{zoom:${zoom2}}}`;
 
       // Apply printFontScale for week view only (scales all rem-based font sizes)
+      // Save the current value so we can restore it exactly after print
+      const _prevFontSize=document.documentElement.style.fontSize;
       const _pfs = vm==='week' ? ((window.ROOSTER_CONFIG&&window.ROOSTER_CONFIG.defaults&&window.ROOSTER_CONFIG.defaults.printFontScale)||1) : 1;
       if(_pfs !== 1) document.documentElement.style.fontSize = (_pfs * 16) + 'px';
 
       window.print();
       window.addEventListener('afterprint',()=>{
         document.body.classList.remove('print-landscape','print-portrait');
-        panel.style.zoom='';
-        document.getElementById('printHeader').style.zoom='';
-        document.documentElement.style.fontSize='';
+        document.documentElement.style.fontSize=_prevFontSize;
+        pageStyle.textContent='';
         window._printMaxCols = null;
         render(0); // restore normal render
       },{once:true});

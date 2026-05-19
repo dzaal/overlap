@@ -724,6 +724,7 @@ body.view-day #weekStrip .ws-dot {
   background: transparent;
 }
 body.view-day #weekStrip .ws-dot.has-ev { background: rgba(255,255,255,.5); }
+@media print { body.view-day #weekStrip { display: none !important; } }
 
 /* ── Day-view: 9:16 portrait on desktop, full-width on mobile ────────────── */
 body.view-day .cw {

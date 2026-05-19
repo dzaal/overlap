@@ -306,9 +306,10 @@ body.main-layer-hidden .ev.main-event{display:none}
   .compact-ev .et{font-size:1em;color:#111!important}
   .compact-ev .es{font-size:.6rem;color:#111!important}
   body{background:#fff}
+  header,#settingsPanel,#menuOverlay,#printMenu,#crewLegend,#weekStrip,body.view-day #weekStrip{display:none!important}
 }
 /* landscape print — bigger day names */
-body.print-landscape{--hh:17px}
+body.print-landscape{--hh:34px}
 body.print-landscape .ch .dd,
 body.print-landscape .compact-card-hdr .dd-s{font-size:1.35rem!important}
 body.print-landscape .ch .dn-full,
@@ -316,7 +317,7 @@ body.print-landscape .compact-card-hdr .dn-s{font-size:.8rem!important}
 body.print-landscape .ch .dm,
 body.print-landscape .compact-card-hdr .dm-s{font-size:.58rem!important}
 /* portrait print: taller rows, bigger text */
-body.print-portrait{--hh:26px}
+body.print-portrait{--hh:52px}
 body.print-portrait .ev{font-size:.78rem}
 body.print-portrait .ev .es{font-size:.68rem}
 body.print-portrait .ch .dd,
