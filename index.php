@@ -915,7 +915,7 @@ body.menu-open #settingsPanel { transform: translateX(0); }
 .stp-btn-update {
   background: rgba(251,191,36,.18);
   border-color: rgba(251,191,36,.35);
-  color: #fde68a;
+  color: #fff;
   animation: upd-pulse 2s ease-in-out infinite;
 }
 .stp-btn-update:hover { background: rgba(251,191,36,.32); }
@@ -929,7 +929,7 @@ body.menu-open #settingsPanel { transform: translateX(0); }
 .stp-btn-install {
   background: rgba(99,102,241,.18);
   border-color: rgba(99,102,241,.3);
-  color: #c7d2fe;
+  color: #fff;
 }
 .stp-btn-install:hover { background: rgba(99,102,241,.32); }
 
