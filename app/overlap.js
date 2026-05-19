@@ -1662,6 +1662,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   Object.entries(colEvents).forEach(([colKey,evList])=>{
     const mainEvs=evList.filter(ev=>ev._cal==='main');
     const crewEvs=evList.filter(ev=>ev._cal!=='main');
+    const hasAfspraakToday=evList.some(ev=>ev._cal==='afspraken');
     const hasMainToday=!mainHidden&&mainEvs.length>0;
     // Main events render full-width at z-index:2; crew events get all maxCols slots to themselves
     const crewAssigned=assignColumns(crewEvs,maxCols);
@@ -1703,13 +1704,14 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       } else if(ev._cal==='main'){
         leftPct=0; rightPct=0;
       } else {
-        // When events shown and this day has a main event, reserve 25% left
-        const CL=hasMainToday?25:0, CW=100-CL;
+        // Reserve left 25% for main events and/or afspraken
+        const CL=(hasMainToday||hasAfspraakToday)?25:0, CW=100-CL;
         const _cw=CW/total;
         leftPct=CL+col*_cw; rightPct=100-(CL+(col+1)*_cw);
         dv.dataset.crewCol=String(col);
         dv.dataset.crewTotal=String(total);
         dv.dataset.hasMain=mainEvs.length>0?'1':'0';
+        dv.dataset.hasAfspraak=hasAfspraakToday?'1':'0';
       }
 
       dv.style.left=`${leftPct}%`;dv.style.right=`${rightPct}%`;
@@ -1884,6 +1886,7 @@ function _animateCrewPositions(toHidden){
   const CL=toHidden?0:25,CW=100-CL;
   document.querySelectorAll('.ev:not(.main-event):not(.afspraak)').forEach(el=>{
     if(el.dataset.crewCol===undefined||el.dataset.hasMain!=='1')return;
+    if(toHidden&&el.dataset.hasAfspraak==='1')return; // afspraak still visible — keep at 25%
     const cc=parseInt(el.dataset.crewCol,10),ct=parseInt(el.dataset.crewTotal,10);
     const cw=CW/ct;
     el.style.left=`${CL+cc*cw}%`;
