@@ -207,11 +207,11 @@ function updateDayViewMetrics(hourCount, maxCrewCols=1){
     Math.min(maxHourHeight, Math.floor(usableGridH / Math.max(hourCount, 1)))
   );
 
-  // Width: A4-portrait ratio as base; widen by 90px per crew column beyond 1
+  // Width: A4-portrait ratio as base; widen by 126px per crew column beyond 1
   const a4Height = reserveH + hourCount * HH;
   const a4Width = Math.floor(a4Height / Math.SQRT2);
-  const colExtra = Math.max(0, maxCrewCols - 1) * 90;
-  const targetWidth = Math.max(a4Width, 52 + maxCrewCols * 90 + 24) + colExtra;
+  const colExtra = Math.max(0, maxCrewCols - 1) * 126;
+  const targetWidth = Math.max(a4Width, 52 + maxCrewCols * 126 + 24) + colExtra;
   const boundedWidth = Math.max(280, Math.min(targetWidth, viewportW - 20));
 
   document.body.style.setProperty('--hh', `${HH}px`);
@@ -1003,6 +1003,8 @@ function renderInto(container, anchorDate){
 function render(dir=0){
   document.body.classList.toggle('view-day', vm==='day');
   document.body.classList.toggle('view-week', vm==='week');
+  document.getElementById('bW').classList.toggle('on', vm==='week');
+  document.getElementById('bD').classList.toggle('on', vm==='day');
   const inner  = document.getElementById('slideInner');
   const panCur = document.getElementById('panelCur');
   const panPrev= document.getElementById('panelPrev');
@@ -2418,10 +2420,10 @@ window._setRefreshInterval = function(min){
   });
 })();
 
-// Logo tap = force reload with spin animation
+// Logo tap = force reload with spin animation (keeps spinning until fetch completes)
 document.querySelector('.logo').addEventListener('click', () => {
   const img = document.querySelector('.logo img');
+  if(!img) return;
   img.classList.add('logo-spin');
-  img.addEventListener('animationend', () => img.classList.remove('logo-spin'), {once:true});
-  fetchEvents();
+  fetchEvents().finally(() => img.classList.remove('logo-spin'));
 });

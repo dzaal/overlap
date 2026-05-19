@@ -428,7 +428,7 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
     var usableH = window.innerHeight - headerH - stripH;
     var portrait  = Math.floor(usableH * 9 / 16);
     var cols      = maxCrewCols || window._dayMaxCols || 1;
-    var colBased  = 52 + cols * 120;
+    var colBased  = 52 + cols * 168;
     var target    = Math.max(portrait, colBased);
     var bounded   = Math.max(320, Math.min(target, window.innerWidth - 40));
     document.body.style.setProperty('--day-view-width', bounded + 'px');
