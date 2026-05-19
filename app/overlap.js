@@ -2218,7 +2218,10 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
     btn.innerHTML='<span>…</span>';
     try {
       await loadHtml2Canvas();
-      const panel=document.getElementById('panelCur');
+      // For day view: capture just the narrow grid (#cg) for a portrait image
+      const isDayView=document.body.classList.contains('view-day');
+      const cgEl=isDayView?document.querySelector('#panelCur #cg'):null;
+      const panel=cgEl||document.getElementById('panelCur');
       const label=document.getElementById('pl').textContent;
 
       // Freeze animations so events render at full opacity instead of mid-keyframe
