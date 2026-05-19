@@ -185,7 +185,7 @@ function applyLocaleUI(){
 
 let HH=40; // px per hour on screen; day view recalculates this from viewport height
 
-function updateDayViewMetrics(hourCount){
+function updateDayViewMetrics(hourCount, maxCrewCols=1){
   if(vm!=='day' || window._printMaxCols){
     HH=40;
     document.body.style.setProperty('--hh', `${HH}px`);
@@ -207,9 +207,12 @@ function updateDayViewMetrics(hourCount){
     Math.min(maxHourHeight, Math.floor(usableGridH / Math.max(hourCount, 1)))
   );
 
+  // Width: A4-portrait ratio as base; widen by 90px per crew column beyond 1
   const a4Height = reserveH + hourCount * HH;
-  const targetWidth = Math.floor(a4Height / Math.SQRT2);
-  const boundedWidth = Math.max(280, Math.min(targetWidth, viewportW - 20, 620));
+  const a4Width = Math.floor(a4Height / Math.SQRT2);
+  const colExtra = Math.max(0, maxCrewCols - 1) * 90;
+  const targetWidth = Math.max(a4Width, 52 + maxCrewCols * 90 + 24) + colExtra;
+  const boundedWidth = Math.max(280, Math.min(targetWidth, viewportW - 20));
 
   document.body.style.setProperty('--hh', `${HH}px`);
   document.body.style.setProperty('--day-view-width', `${boundedWidth}px`);
@@ -917,8 +920,21 @@ function renderInto(container, anchorDate){
   exp.forEach(ev=>{const ds=new Date(ev.start);ds.setHours(0,0,0,0);const k=ds.toDateString();if(byDay[k]!==undefined)byDay[k].push(ev)});
   if(vm==='day'){
     const {sh:daySh,eh:dayEh}=dynamicHoursForCols(exp,colDefs);
-    updateDayViewMetrics(dayEh-daySh);
+    // Count max concurrent crew columns (include cross-midnight continuations)
+    const _dk=colDefs[0].days[0];
+    const _ds=new Date(_dk);_ds.setHours(0,0,0,0);
+    const _de=new Date(_dk);_de.setHours(23,59,59,999);
+    const _crew=exp.filter(ev=>{
+      if(ev.start._ad||ev._cal==='main')return false;
+      const s=ev.start.getTime(),e=ev.end?ev.end.getTime():s+3600000;
+      return s<=_de.getTime()&&e>_ds.getTime();
+    });
+    const _asgn=assignColumns(_crew,20);
+    const _maxCols=_asgn.length?Math.max(..._asgn.map(a=>a.col))+1:1;
+    window._dayMaxCols=_maxCols;
+    updateDayViewMetrics(dayEh-daySh,_maxCols);
   } else {
+    window._dayMaxCols=1;
     updateDayViewMetrics(0);
   }
   const cm={};let ci=0;
@@ -1624,7 +1640,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   });
 
   // Day view (single column) can fit more crew columns; week view caps at 3
-  const maxCols = window._printMaxCols || (colDefs.length === 1 ? 5 : 3);
+  const maxCols = window._printMaxCols || (vm==='day' ? (window._dayMaxCols||20) : 3);
 
   let animIdx=0;
   // Collect overflow events per day column for the overflow strip
