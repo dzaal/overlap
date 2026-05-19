@@ -185,7 +185,7 @@ function applyLocaleUI(){
 
 let HH=40; // px per hour on screen; day view recalculates this from viewport height
 
-function updateDayViewMetrics(hourCount, maxCrewCols=1){
+function updateDayViewMetrics(hourCount){
   if(vm!=='day' || window._printMaxCols){
     HH=40;
     document.body.style.setProperty('--hh', `${HH}px`);
@@ -207,14 +207,9 @@ function updateDayViewMetrics(hourCount, maxCrewCols=1){
     Math.min(maxHourHeight, Math.floor(usableGridH / Math.max(hourCount, 1)))
   );
 
-  // Base width = A4 portrait ratio; widen by ~90px per crew column beyond 4
   const a4Height = reserveH + hourCount * HH;
-  const a4Width = Math.floor(a4Height / Math.SQRT2);
-  const TIME_LABEL = 52, COL_W = 90, BASE_COLS = 4;
-  const extraWidth = Math.max(0, maxCrewCols - BASE_COLS) * COL_W;
-  const targetWidth = a4Width + extraWidth;
-  const maxW = Math.max(620, TIME_LABEL + maxCrewCols * COL_W + 24);
-  const boundedWidth = Math.max(280, Math.min(targetWidth, viewportW - 20, maxW));
+  const targetWidth = Math.floor(a4Height / Math.SQRT2);
+  const boundedWidth = Math.max(280, Math.min(targetWidth, viewportW - 20, 620));
 
   document.body.style.setProperty('--hh', `${HH}px`);
   document.body.style.setProperty('--day-view-width', `${boundedWidth}px`);
@@ -730,47 +725,40 @@ function initEditFeatures(){
   updateAuthUI();
 }
 
-// Returns true if a day has any events, shifts, or important dates
-function dayHasContent(date){
-  const dayStart=new Date(date);dayStart.setHours(0,0,0,0);
-  const dayEnd=new Date(date);dayEnd.setHours(23,59,59,999);
-  if(allEv.some(ev=>{
+function hasTuesdayEvents(anchorDate){
+  // Check if any event in allEv falls on a Tuesday of this week
+  const tue=addD(anchorDate,1); // anchor is Monday, +1 = Tuesday
+  tue.setHours(0,0,0,0);
+  const tueEnd=new Date(tue);tueEnd.setHours(23,59,59,999);
+  return allEv.some(ev=>{
     if(!ev.start)return false;
-    const s=new Date(ev.start);s.setHours(0,0,0,0);
-    if(same(s,dayStart))return true;
-    if(ev.rrule)return expand(ev,dayStart,dayEnd).some(c=>{const cs=new Date(c.start);cs.setHours(0,0,0,0);return same(cs,dayStart);});
+    const evStart=new Date(ev.start);evStart.setHours(0,0,0,0);
+    if(same(evStart,tue))return true;
+    // Check recurring
+    if(ev.rrule){
+      const copies=expand(ev,tue,tueEnd);
+      return copies.some(c=>{const s=new Date(c.start);s.setHours(0,0,0,0);return same(s,tue)});
+    }
     return false;
-  }))return true;
-  const y=dayStart.getFullYear(),mo=String(dayStart.getMonth()+1).padStart(2,'0'),dd=String(dayStart.getDate()).padStart(2,'0');
-  const ds=`${y}-${mo}-${dd}`;
-  return(CONFIG.defaults.importantDates||[]).some(d=>d.endDate?ds>=d.date&&ds<=d.endDate:d.date===ds);
-}
-
-// Returns visible days for the week: alwaysShowDays always included, others only when they have content
-function visibleWeekDays(anchorDate){
-  const alwaysShow=new Set(CONFIG.defaults.alwaysShowDays||[0,1,2,3,4,5,6]);
-  const week=[];for(let i=0;i<7;i++)week.push(addD(anchorDate,i));
-  return week.filter(d=>alwaysShow.has(d.getDay())||dayHasContent(d));
-}
-
-// Returns column definitions. Sat+Sun (when both visible) are merged into one narrow compact column.
-function getColDefs(anchorDate){
-  if(vm==='day')return[{days:[new Date(anchorDate)],narrow:false}];
-  const days=visibleWeekDays(anchorDate);
-  const wknd=days.filter(d=>d.getDay()===0||d.getDay()===6);
-  const compactWknd=wknd.length>=2;
-  const cols=[];
-  days.forEach(d=>{
-    if(compactWknd&&(d.getDay()===0||d.getDay()===6))return;
-    cols.push({days:[d],narrow:false});
   });
-  if(compactWknd)cols.push({days:wknd,narrow:true});
-  return cols;
+}
+
+// Returns column definitions: one per visible day, no merging
+function getColDefs(anchorDate){
+  if(vm==='day') return [{days:[new Date(anchorDate)],narrow:false}];
+  const showTue=hasTuesdayEvents(anchorDate);
+  const week=[];for(let i=0;i<7;i++)week.push(addD(anchorDate,i));
+  return week
+    .filter(d=> showTue || d.getDay()!==2)
+    .map(d=>({days:[d],narrow:false}));
 }
 
 function getDays(){
-  if(vm==='day')return[new Date(anc)];
-  return visibleWeekDays(anc);
+  if(vm==='day') return [new Date(anc)];
+  const showTue=hasTuesdayEvents(anc);
+  const week=[];for(let i=0;i<7;i++)week.push(addD(anc,i));
+  if(!showTue)return week.filter(d=>d.getDay()!==2);
+  return week;
 }
 
 function isPhone(){ return window.innerWidth < 600 && window.innerHeight > window.innerWidth; }
@@ -929,90 +917,76 @@ function renderInto(container, anchorDate){
   exp.forEach(ev=>{const ds=new Date(ev.start);ds.setHours(0,0,0,0);const k=ds.toDateString();if(byDay[k]!==undefined)byDay[k].push(ev)});
   if(vm==='day'){
     const {sh:daySh,eh:dayEh}=dynamicHoursForCols(exp,colDefs);
-    // Count max concurrent crew columns to decide how wide the day view should be.
-    // Include cross-midnight continuation events (start before this day, end after midnight).
-    const _dayStart=new Date(colDefs[0].days[0]);_dayStart.setHours(0,0,0,0);
-    const _dayEnd=new Date(colDefs[0].days[0]);_dayEnd.setHours(23,59,59,999);
-    const _dayCrewEvs=exp.filter(ev=>{
-      if(ev.start._ad||ev._cal==='main')return false;
-      const evS=ev.start.getTime();
-      const evE=ev.end?ev.end.getTime():evS+3600000;
-      return evS<=_dayEnd.getTime()&&evE>_dayStart.getTime();
-    });
-    const _assigned=assignColumns(_dayCrewEvs,20);
-    const _maxCols=_assigned.length?Math.max(..._assigned.map(a=>a.col))+1:1;
-    window._dayMaxCols=_maxCols;
-    updateDayViewMetrics(dayEh-daySh,_maxCols);
+    updateDayViewMetrics(dayEh-daySh);
   } else {
     updateDayViewMetrics(0);
   }
   const cm={};let ci=0;
 
-  // Separate compact weekend column (Sat+Sun merged) from regular day columns
-  const compactDef=colDefs.find(cd=>cd.narrow);
-  const regCols=colDefs.filter(cd=>!cd.narrow);
-
-  // Helper: build a row — uses buildGridWithCompact when a compact weekend col is provided
-  function buildRow(el,rowReg,rowCompact,hours){
-    const{sh:rsh,eh:reh}=hours||dynamicHoursForCols(exp,[...rowReg,...(rowCompact?[rowCompact]:[])]);
-    if(rowCompact&&rowReg.length>0){
-      buildGridWithCompact(el,rowReg,rowCompact.days,today,exp,cm,ci,byDay,rsh,reh);
-    }else if(rowCompact){
-      // Only compact weekend days visible — show compact grid full width
-      buildCompactTimeGrid(el,rowCompact.days,today,exp,rsh,reh);
-    }else{
-      buildGrid(el,rowReg,today,exp,cm,ci,byDay,rsh,reh);
-    }
-  }
-
   if(vm==='week' && isPhoneLandscape()){
-    // Phone landscape: split into two halves; compact weekend goes in second half
-    const mid=Math.ceil(regCols.length/2);
-    const row1=regCols.slice(0,mid);
-    const row2=regCols.slice(mid);
+    // Phone landscape: show full week as 3+3 split (like tablet)
+    const row1=colDefs.slice(0,3);
+    const row2=colDefs.slice(3);
     container.innerHTML=`<div class="split-wrap"><div id="sgA"></div><div id="sgB"></div></div>`;
-    buildRow(container.querySelector('#sgA'),row1,null);
-    buildRow(container.querySelector('#sgB'),row2,compactDef||null);
+    const {sh:sh1,eh:eh1}=dynamicHoursForCols(exp,row1);
+    const {sh:sh2,eh:eh2}=dynamicHoursForCols(exp,row2);
+    buildGrid(container.querySelector('#sgA'),row1,today,exp,cm,ci,byDay,sh1,eh1);
+    buildGrid(container.querySelector('#sgB'),row2,today,exp,cm,ci,byDay,sh2,eh2);
   } else if(vm==='week' && isSmall()){
-    // Tablet: split at midpoint; compact weekend goes in second row
-    const mid=Math.ceil(regCols.length/2);
-    const row1=regCols.slice(0,mid);
-    const row2=regCols.slice(mid);
-    container.innerHTML=`<div class="split-wrap"><div id="sgA"></div><div id="sgB"></div></div>`;
-    buildRow(container.querySelector('#sgA'),row1,null);
-    buildRow(container.querySelector('#sgB'),row2,compactDef||null);
-  } else if(vm==='week' && isPhone()){
-    // Phone portrait: pair regular cols into rows of 2; compact weekend gets own row
-    const ids=['sgP0','sgP1','sgP2','sgP3','sgP4'];
-    const rowPairs=[];
-    for(let i=0;i<regCols.length;i+=2)rowPairs.push(regCols.slice(i,i+2));
-    const totalRows=rowPairs.length+(compactDef?1:0);
-    const divs=ids.slice(0,totalRows).map(id=>`<div id="${id}"></div>`).join('');
-    container.innerHTML=`<div class="split-wrap">${divs}</div>`;
-    rowPairs.forEach((pair,i)=>{
-      buildRow(container.querySelector('#'+ids[i]),pair,null);
-    });
-    if(compactDef){
-      const el=container.querySelector('#'+ids[rowPairs.length]);
-      const{sh:rsh,eh:reh}=dynamicHoursForCols(exp,[compactDef]);
-      buildCompactTimeGrid(el,compactDef.days,today,exp,rsh,reh);
+    const showTue=hasTuesdayEvents(anchorDate);
+    if(showTue){
+      const allDays=colDefs.map(c=>c.days[0]);
+      const weekendDays=allDays.filter(d=>d.getDay()===6||d.getDay()===0);
+      const nonWeekend=colDefs.filter(c=>c.days[0].getDay()!==6&&c.days[0].getDay()!==0);
+      const row1=nonWeekend.slice(0,3);
+      const row2=nonWeekend.slice(3);
+      container.innerHTML=`<div class="split-wrap"><div id="sgA"></div><div id="sgB2"></div></div>`;
+      const {sh:sh1,eh:eh1}=dynamicHoursForCols(exp,row1);
+      const {sh:sh2,eh:eh2}=dynamicHoursForCols(exp,row2);
+      buildGrid(container.querySelector('#sgA'),row1,today,exp,cm,ci,byDay,sh1,eh1);
+      buildGridWithCompact(container.querySelector('#sgB2'),row2,weekendDays,today,exp,cm,ci,byDay,sh2,eh2);
+    } else {
+      const row1=colDefs.slice(0,3);
+      const row2=colDefs.slice(3);
+      container.innerHTML=`<div class="split-wrap"><div id="sgA"></div><div id="sgB"></div></div>`;
+      const {sh:sh1,eh:eh1}=dynamicHoursForCols(exp,row1);
+      const {sh:sh2,eh:eh2}=dynamicHoursForCols(exp,row2);
+      buildGrid(container.querySelector('#sgA'),row1,today,exp,cm,ci,byDay,sh1,eh1);
+      buildGrid(container.querySelector('#sgB'),row2,today,exp,cm,ci,byDay,sh2,eh2);
     }
+  } else if(vm==='week' && isPhone()){
+    // Phone portrait: 3 rows × 2 cols (+ optional 4th row for Zo when Tue active)
+    // colDefs: without Tue = [Ma,Wo,Do,Vr,Za,Zo] (6), with Tue = [Ma,Di,Wo,Do,Vr,Za,Zo] (7)
+    const showTue=hasTuesdayEvents(anchorDate);
+    const ids=['sgP0','sgP1','sgP2','sgP3'];
+    let rows;
+    if(!showTue){
+      // 6 cols → 3 rows of 2: [Ma,Wo] [Do,Vr] [Za,Zo]
+      rows=[colDefs.slice(0,2),colDefs.slice(2,4),colDefs.slice(4,6)];
+    } else {
+      // 7 cols → [Ma,Di] [Wo,Do] [Vr,Za] [Zo]
+      rows=[colDefs.slice(0,2),colDefs.slice(2,4),colDefs.slice(4,6),colDefs.slice(6,7)];
+    }
+    const divs=rows.map((_,i)=>`<div id="${ids[i]}"></div>`).join('');
+    container.innerHTML=`<div class="split-wrap">${divs}</div>`;
+    rows.forEach((rowCols,i)=>{
+      const {sh:rsh,eh:reh}=dynamicHoursForCols(exp,rowCols);
+      buildGrid(container.querySelector('#'+ids[i]),rowCols,today,exp,cm,ci,byDay,rsh,reh);
+    });
   } else {
-    // Desktop: single row — compact weekend on right via buildGridWithCompact
     container.innerHTML=`<div class="cw"><div id="cg"></div></div>`;
     const cg=container.querySelector('#cg');
     cg.style.borderRadius='0';cg.style.overflow='visible';
     cg.style.boxShadow='var(--sh)';cg.style.background='#fff';cg.style.margin='0 auto';
     cg.style.maxWidth='100%';
-    buildRow(cg,regCols,compactDef||null);
+    const {sh,eh}=dynamicHoursForCols(exp,colDefs);
+    buildGrid(cg,colDefs,today,exp,cm,ci,byDay,sh,eh);
   }
 }
 
 function render(dir=0){
   document.body.classList.toggle('view-day', vm==='day');
   document.body.classList.toggle('view-week', vm==='week');
-  document.getElementById('bW').classList.toggle('on', vm==='week');
-  document.getElementById('bD').classList.toggle('on', vm==='day');
   const inner  = document.getElementById('slideInner');
   const panCur = document.getElementById('panelCur');
   const panPrev= document.getElementById('panelPrev');
@@ -1320,11 +1294,9 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
   days.forEach((d,dayIdx)=>{
     const k=d.toDateString();
     const tc=same(d,today)?' tc':'';
-    const {pub,school,custom}=getHolidayLabel(d);
+    const {pub,school}=getHolidayLabel(d);
     const bdayNames=(CONFIG.crew||[]).filter(c=>{if(!c.bday)return false;const[dd,mm]=c.bday.split('-').map(Number);return d.getDate()===dd&&d.getMonth()+1===mm;}).map(c=>c.name);
-    const holHtml=(pub?`<span class="hday">🔴 ${pub}</span>`:'')
-      +(school&&!pub?`<span class="schday">📚 ${school}</span>`:'')
-      +custom.map(c=>`<span class="custday">${c}</span>`).join('');
+    const holHtml=pub?`<span class="hday">🔴 ${pub}</span>`:''+(school&&!pub?`<span class="schday">📚 ${school}</span>`:'');
     const bdayHtml=bdayNames.length?`<span class="bdayday">🎂 ${bdayNames.join(', ')}</span>`:'';
 
     // Header
@@ -1458,15 +1430,15 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
 // Uses the same 52px repeat(3,1fr) CSS grid template as row1 (sgA) so that column
 // boundaries land at identical pixels — prevents the double-line artifact.
 function buildGridWithCompact(container, colDefs, weekendDays, today, exp, cm, ci, byDay, sh, eh){
-  const N=colDefs.length;
   container.style.display='grid';
-  container.style.gridTemplateColumns=`52px repeat(${N},1fr) minmax(80px,.65fr)`;
+  container.style.gridTemplateColumns='52px repeat(3, 1fr)';
 
   const sgB=document.createElement('div');
   const sgC=document.createElement('div');
-  // sgB spans 52px + N day columns; sgC gets the compact weekend column
-  sgB.style.cssText=`grid-column:1/${N+2};min-width:0;overflow:hidden`;
-  sgC.style.cssText=`grid-column:${N+2};min-width:0;overflow:hidden;display:flex;flex-direction:column`;
+  // sgB spans the first 3 tracks (52px + 1fr + 1fr), sgC gets the 4th track (1fr)
+  // No border-right on sgB — Friday's .ce border-right provides the separator
+  sgB.style.cssText='grid-column:1/4;min-width:0;overflow:hidden';
+  sgC.style.cssText='grid-column:4;min-width:0;overflow:hidden;display:flex;flex-direction:column';
   container.appendChild(sgB);
   container.appendChild(sgC);
 
@@ -1521,12 +1493,11 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   colDefs.forEach(cd=>{
     const d=cd.days[0];
     const t=same(d,today);
-    const {pub,school,custom}=getHolidayLabel(d);
+    const {pub,school}=getHolidayLabel(d);
     const bdayNames=(CONFIG.crew||[]).filter(c=>{if(!c.bday)return false;const[dd,mm]=c.bday.split('-').map(Number);return d.getDate()===dd&&d.getMonth()+1===mm;}).map(c=>c.name);
     const bdayHtml=bdayNames.length?`<span class="bdayday">🎂 ${bdayNames.join(', ')}</span>`:'';
-    const holHtml=(pub?`<span class="hday">🔴 ${pub}</span>`:'')
-      +(school&&!pub?`<span class="schday">📚 ${school}</span>`:'')
-      +custom.map(c=>`<span class="custday">${c}</span>`).join('');
+    const holHtml=pub?`<span class="hday">🔴 ${pub}</span>`:''
+      +(school&&!pub?`<span class="schday">📚 ${school}</span>`:'');
     const isLastCol=(colDefs.indexOf(cd)===colDefs.length-1);
     h+=`<div class="ch${t?' tc':''}" data-toggle-day="${d.toDateString()}"${isLastCol?' data-lastcol':''}>
       <div class="dayline"><span class="dn-short">${DS[d.getDay()]}</span><span class="dn-full">${DL[d.getDay()]}</span><span class="dd"> ${d.getDate()}</span><span class="dm" style="margin-left:2px">${MN[d.getMonth()]}</span></div>
@@ -1636,6 +1607,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   colDefs.forEach(cd=>{ colEvents[cd.days[0].toDateString()]=[] });
   exp.forEach(ev=>{
     if(ev.start._ad)return;
+    if(mainHidden && ev._cal==='main')return; // exclude from overlap calc when layer hidden
     const ds=new Date(ev.start);ds.setHours(0,0,0,0);
     const k=ds.toDateString();
     if(colEvents[k]!==undefined) colEvents[k].push(ev);
@@ -1651,8 +1623,8 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     }
   });
 
-  // Day view: use 20 so continuation events never overflow; week view caps at 3
-  const maxCols = window._printMaxCols || (vm === 'day' ? 20 : 3);
+  // Day view (single column) can fit more crew columns; week view caps at 3
+  const maxCols = window._printMaxCols || (colDefs.length === 1 ? 5 : 3);
 
   let animIdx=0;
   // Collect overflow events per day column for the overflow strip
@@ -1666,11 +1638,6 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     const hasMainToday=!mainHidden&&mainEvs.length>0;
     // Main events render full-width at z-index:2; crew events get all maxCols slots to themselves
     const crewAssigned=assignColumns(crewEvs,maxCols);
-    // In day view: if actual columns exceed initial estimate (due to continuations), widen the panel
-    if(vm==='day'&&!window._printMaxCols&&crewAssigned.length){
-      const _ac=Math.max(...crewAssigned.map(a=>a.col))+1;
-      if(_ac>(window._dayMaxCols||1)){window._dayMaxCols=_ac;updateDayViewMetrics(eh-sh,_ac);}
-    }
     const assigned=[...mainEvs.map(ev=>({ev,col:0,total:1,overflow:false})),...crewAssigned];
     assigned.forEach(({ev,col,total,overflow})=>{
       if(overflow){
@@ -1693,7 +1660,6 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
         dv.style.background='linear-gradient(135deg, rgba(173,244,210,.45), rgba(63,190,116,.25))';
         dv.style.color='#0f3c20';
         dv.style.border='2px solid rgba(26,61,43,.45)';
-        if(mainHidden) dv.style.opacity='0'; // suppress nova-layer-hide flash on initial render
       }
       if(ev._cal==='afspraken'){dv.style.background='#fde8e8';dv.style.color='#7b1111';}
       dv.style.top=`${top-(cH-sh)*HH}px`;dv.style.height=`${height}px`;
@@ -1706,11 +1672,10 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       } else {
         // Reserve left 25% for main events and/or afspraken
         const CL=(hasMainToday||hasAfspraakToday)?25:0, CW=100-CL;
-        const _cw=CW/total;
-        leftPct=CL+col*_cw; rightPct=100-(CL+(col+1)*_cw);
+        leftPct=CL+col*(CW/total); rightPct=0;
         dv.dataset.crewCol=String(col);
         dv.dataset.crewTotal=String(total);
-        dv.dataset.hasMain=mainEvs.length>0?'1':'0';
+        dv.dataset.hasMain=hasMainToday?'1':'0';
         dv.dataset.hasAfspraak=hasAfspraakToday?'1':'0';
       }
 
@@ -1886,11 +1851,10 @@ function _animateCrewPositions(toHidden){
   const CL=toHidden?0:25,CW=100-CL;
   document.querySelectorAll('.ev:not(.main-event):not(.afspraak)').forEach(el=>{
     if(el.dataset.crewCol===undefined||el.dataset.hasMain!=='1')return;
-    if(toHidden&&el.dataset.hasAfspraak==='1')return; // afspraak still visible — keep at 25%
+    if(toHidden&&el.dataset.hasAfspraak==='1')return;
     const cc=parseInt(el.dataset.crewCol,10),ct=parseInt(el.dataset.crewTotal,10);
-    const cw=CW/ct;
-    el.style.left=`${CL+cc*cw}%`;
-    el.style.right=`${100-(CL+(cc+1)*cw)}%`;
+    el.style.left=`${CL+cc*(CW/ct)}%`;
+    el.style.right='0%';
   });
 }
 document.getElementById('mainLayerToggle')?.addEventListener('change',(e)=>{
@@ -1900,9 +1864,8 @@ document.getElementById('mainLayerToggle')?.addEventListener('change',(e)=>{
     _animateCrewPositions(true);
     setTimeout(()=>document.body.classList.add('main-layer-hidden'),260);
   } else {
-    // Showing: reveal main events first, clear any inline opacity suppression, then animate shifts
+    // Showing: reveal main events first, then animate shifts into position
     document.body.classList.remove('main-layer-hidden');
-    document.querySelectorAll('.ev.main-event').forEach(el=>{ el.style.opacity=''; });
     setTimeout(()=>_animateCrewPositions(false),150);
   }
 });
@@ -2255,10 +2218,7 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
     btn.innerHTML='<span>…</span>';
     try {
       await loadHtml2Canvas();
-      // For day view: capture just the narrow grid (#cg) for a portrait image
-      const isDayView=document.body.classList.contains('view-day');
-      const cgEl=isDayView?document.querySelector('#panelCur #cg'):null;
-      const panel=cgEl||document.getElementById('panelCur');
+      const panel=document.getElementById('panelCur');
       const label=document.getElementById('pl').textContent;
 
       // Freeze animations so events render at full opacity instead of mid-keyframe
