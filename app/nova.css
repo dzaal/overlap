@@ -4,6 +4,8 @@
  * Drop this file in app/ and select "Nova" in Display settings.
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap');
+
 /* ── Base palette override ── */
 body.theme-nova {
   --gd:  #0d1b3e;
@@ -111,6 +113,8 @@ body.theme-nova .ev:not(.main-event):not(.afspraak) {
   filter: saturate(.5) brightness(1.45);
   box-shadow: 0 2px 8px rgba(99,102,241,.22), inset 0 1px 0 rgba(255,255,255,.45);
   overflow: hidden;
+  /* brightness(1.45) makes all colors light — always use dark text */
+  color: #1e293b !important;
 }
 
 /* Static gloss overlay — bright highlight at the top */
@@ -125,6 +129,12 @@ body.theme-nova .ev:not(.main-event):not(.afspraak)::before {
     transparent 60%);
   pointer-events: none;
   z-index: 1;
+}
+/* Lift text above the gloss (z-index:1) and shimmer (z-index:2) overlays */
+body.theme-nova .ev:not(.main-event):not(.afspraak) .et,
+body.theme-nova .ev:not(.main-event):not(.afspraak) .es {
+  position: relative;
+  z-index: 3;
 }
 
 /* Animated shimmer sweep that repeats every 4 s */
@@ -215,15 +225,9 @@ body.theme-nova .allday-block.is-other {
   color: #e0e7ff;
 }
 
-/* ── Events layer toggle: scale-out disappear in nova ── */
+/* ── Events layer toggle: hide in nova (display:none, same as base theme) ── */
 body.theme-nova.main-layer-hidden .ev.main-event {
-  display: block !important;
-  animation: nova-layer-hide .35s cubic-bezier(.4,0,.6,1) forwards !important;
-  pointer-events: none;
-}
-@keyframes nova-layer-hide {
-  0%   { opacity: .92; transform: none; }
-  100% { opacity: 0;   transform: scaleY(.55) scaleX(.88); }
+  display: none !important;
 }
 /* Layer toggle button: subtle glow when events are hidden */
 body.theme-nova.main-layer-hidden .layer-toggle {
@@ -233,4 +237,97 @@ body.theme-nova.main-layer-hidden .layer-toggle {
 }
 body.theme-nova .layer-toggle {
   transition: background .3s ease, border-color .3s ease, box-shadow .3s ease;
+}
+
+/* ── Orbitron: futuristic font for day labels + header buttons ── */
+body.theme-nova .ch .dn-short,
+body.theme-nova .ch .dn-full {
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: .6rem;
+  letter-spacing: .05em;
+}
+body.theme-nova .ch .dd {
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: 2.2rem;
+  letter-spacing: -.02em;
+}
+body.theme-nova .ch.tc .dd {
+  font-weight: 700;
+}
+body.theme-nova .tb,
+body.theme-nova .tb-main,
+body.theme-nova .vb,
+body.theme-nova .hdr-date-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .62rem;
+  letter-spacing: .06em;
+  font-weight: 600;
+}
+body.theme-nova #pl {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .6rem;
+  letter-spacing: .05em;
+}
+
+/* ── Datepicker: Nova styling ── */
+body.theme-nova #dpMonthLabel {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #6366f1;
+  text-transform: uppercase;
+}
+body.theme-nova #dpHeader button {
+  background: rgba(99,102,241,.15);
+  border: 1px solid rgba(99,102,241,.35);
+  border-radius: 8px;
+  color: #818cf8;
+  font-size: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, box-shadow .15s;
+}
+body.theme-nova #dpHeader button:hover {
+  background: rgba(99,102,241,.32);
+  box-shadow: 0 0 8px rgba(99,102,241,.4);
+}
+body.theme-nova #dpPrev::before,
+body.theme-nova #dpNext::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid #818cf8;
+  border-top: 2px solid #818cf8;
+  border-radius: 0 2px 0 0;
+}
+body.theme-nova #dpPrev::before {
+  transform: rotate(-135deg) translateX(-1px);
+}
+body.theme-nova #dpNext::before {
+  transform: rotate(45deg) translateX(-1px);
+}
+body.theme-nova .dp-day.dp-today {
+  background: #6366f1;
+  box-shadow: 0 0 8px rgba(99,102,241,.5);
+}
+body.theme-nova .dp-day.dp-sel {
+  background: #4f46e5;
+  box-shadow: 0 0 10px rgba(99,102,241,.6);
+}
+
+/* ── Datepicker: overrides for dark palette ── */
+/* dp-other (prev/next month days): base #ccc is too faint on white */
+body.theme-nova .dp-day.dp-other { color: #94a3b8; }
+/* Day hover: use indigo tint instead of pale-green (--gp = dark navy) */
+body.theme-nova .dp-day:hover { background: rgba(99,102,241,.14); color: #1e1b4b; }
+/* Week-number hover: --gp is dark navy so row highlight needs white text */
+body.theme-nova .dp-row-hover.dp-wk-num { background: #6366f1; color: #fff; }
+body.theme-nova .dp-row-hover.dp-day:not(.dp-other):not(.dp-today):not(.dp-sel) {
+  background: rgba(99,102,241,.14);
+  color: #1e1b4b;
 }

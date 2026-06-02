@@ -798,6 +798,64 @@ function nameHash(str){
   for(let i=0;i<str.length;i++)h=(h*31+str.charCodeAt(i))>>>0;
   return h%PALETTES.length;
 }
+function hashInt(str){
+  let h=2166136261;
+  str=String(str||'');
+  for(let i=0;i<str.length;i++){
+    h^=str.charCodeAt(i);
+    h=Math.imul(h,16777619)>>>0;
+  }
+  return h>>>0;
+}
+function sketchTextureSeed(ev, salt=''){
+  const start=ev?.start instanceof Date?ev.start.toISOString():String(ev?.start||'');
+  const end=ev?.end instanceof Date?ev.end.toISOString():String(ev?.end||'');
+  return hashInt(`${salt}|${ev?.uid||ev?.localId||''}|${ev?.title||''}|${start}|${end}`);
+}
+function sketchTextureStyle(ev, salt=''){
+  const h=sketchTextureSeed(ev,salt);
+  const n=(shift,bits=7)=>(h>>>shift)&((1<<bits)-1);
+  const rot=(n(0,4)-7)*0.7;
+  const tooth=54+n(4,5);
+  const fill=43+n(8,5);
+  const cross=31+n(12,4);
+  const grain=4+n(16,2);
+  const opacity=(0.46+n(18,4)*0.014).toFixed(2);
+  const ox=2+n(22,2);
+  const oy=2+n(24,2);
+  const wobble=(n(26,3)-3)*0.35;
+  // Scale: hash-derived small variation per card (0.97–1.03), tied to color/title
+  const afterScale=(0.97+(n(29,3)/7)*0.06).toFixed(3);
+  // Rotation offset for ::after based on shift duration: 1h→0deg, 6h→2deg
+  const durationMs=(ev?.end instanceof Date&&ev?.start instanceof Date)?ev.end-ev.start:0;
+  const durationH=Math.max(0,Math.min(6,durationMs/3600000));
+  const afterRot=((durationH-1)*0.4).toFixed(2);
+  return [
+    `--sk-paper-x:${n(21,6)-18}px`,
+    `--sk-paper-y:${n(27,6)-18}px`,
+    `--sk-pencil-x:${n(3,6)-18}px`,
+    `--sk-pencil-y:${n(9,6)-18}px`,
+    `--sk-cross-x:${n(15,5)-10}px`,
+    `--sk-cross-y:${n(20,5)-10}px`,
+    `--sk-rot:${rot.toFixed(1)}deg`,
+    `--sk-paper-size:${tooth}px`,
+    `--sk-fill-size:${fill}px`,
+    `--sk-cross-size:${cross}px`,
+    `--sk-grain-gap:${grain}px`,
+    `--sk-wax-opacity:${opacity}`,
+    `--sk-corner-x:${ox}px`,
+    `--sk-corner-y:${oy}px`,
+    `--sk-border-rot:${wobble.toFixed(2)}deg`,
+    `--sk-after-scale:${afterScale}`,
+    `--sk-after-rot:${afterRot}deg`
+  ].join(';');
+}
+function applySketchTexture(dv, ev, salt=''){
+  sketchTextureStyle(ev,salt).split(';').forEach(pair=>{
+    const [key,value]=pair.split(':');
+    if(key&&value)dv.style.setProperty(key,value);
+  });
+}
 
 function hexToRgb(hex){
   const h=hex.replace('#','');
@@ -807,6 +865,18 @@ function hexToRgb(hex){
 function rgbaFromHex(hex, alpha){
   const [r,g,b] = hexToRgb(hex);
   return `rgba(${r},${g},${b},${alpha})`;
+}
+function darkInkFromHex(hex){
+  const [r,g,b]=hexToRgb(hex);
+  const darken=v=>Math.max(18,Math.round(v*0.36));
+  return `rgb(${darken(r)},${darken(g)},${darken(b)})`;
+}
+function luminanceFromHex(hex){
+  const [r,g,b]=hexToRgb(hex);
+  return (r*299+g*587+b*114)/1000;
+}
+function sketchInkFromHex(hex){
+  return luminanceFromHex(hex)<150?'#fff':darkInkFromHex(hex);
 }
 function contrastTextColor(hex){
   const [r,g,b]=hexToRgb(hex);
@@ -831,6 +901,8 @@ function applyColor(dv, title){
     dv.style.background = isQuestion ? rgbaFromHex(baseColor, 0.85) : baseColor;
     dv.style.color = isQuestion ? contrast : contrast;
     dv.style.borderLeftColor = baseColor;
+    dv.style.setProperty('--sk-bg-color', baseColor);
+    dv.style.setProperty('--sk-ink-color', sketchInkFromHex(baseColor));
     if(isQuestion){
       dv.style.border = '4px dashed #000';
       dv.style.borderRadius = '6px';
@@ -848,6 +920,8 @@ function applyColor(dv, title){
   dv.style.background = isQuestion ? rgbaFromHex(outlinedBorderColor, 0.85) : bg;
   dv.style.color = isQuestion ? contrast : tx;
   dv.style.borderLeftColor = ac;
+  dv.style.setProperty('--sk-bg-color', bg);
+  dv.style.setProperty('--sk-ink-color', sketchInkFromHex(bg));
   if(isQuestion){
     dv.style.border = '4px dashed #000';
     dv.style.borderRadius = '6px';
@@ -1016,6 +1090,7 @@ function render(dir=0){
     inner.style.transition='none';
     inner.style.transform='translateX(-100%)';
     updateLabel();
+    updateWeekStrip();
     return;
   }
 
@@ -1085,27 +1160,71 @@ function updateLabel(){
   syncUrl();
 }
 
-function syncUrl(){
+let _syncingFromHistory = false;
+
+function slugForCurrentView(){
   const days=getDays().sort((a,b)=>a-b);
   const d=days[0];
-  const ds=`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
-  history.replaceState(null,'',location.pathname+'#'+vm+'/'+ds);
+  return '#'+vm+'/'+`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 }
+
+function applySlug(slug){
+  const m=String(slug||'').match(/^#(week|day)\/(\d{4}-\d{2}-\d{2})$/);
+  if(!m) return false;
+  const d=new Date(m[2]+'T00:00:00');
+  if(isNaN(d)) return false;
+  vm=m[1];
+  anc=vm==='week'?sowk(d):d;
+  return true;
+}
+
+function syncUrl(){
+  const slug=slugForCurrentView();
+  if(location.hash===slug) return;
+  if(_syncingFromHistory){
+    history.replaceState({overlap:true},'',location.pathname+slug);
+    return;
+  }
+  history.pushState({overlap:true},'',location.pathname+slug);
+}
+
+window.addEventListener('popstate',()=>{
+  if(!applySlug(location.hash)) return;
+  _syncingFromHistory=true;
+  render(0);
+  _syncingFromHistory=false;
+});
 
 function scrollToToday(){
   requestAnimationFrame(()=>{
     const now=new Date();
     const curH=now.getHours()+now.getMinutes()/60;
-    // Find the cell closest to current time in today's column
     const todayKey=new Date();todayKey.setHours(0,0,0,0);
     const key=todayKey.toDateString();
-    // Try to find a cell at current hour - 1 so the current time is visible with context
+    if(vm==='week'){
+      const label=document.querySelector(`[data-toggle-day="${key}"]`);
+      if(!label) return;
+      scrollElementToTop(label);
+      return;
+    }
+    // target: current hour minus 1 so context is visible above
     const targetH=Math.max(0,Math.floor(curH)-1);
-    let cell=document.querySelector(`[data-col="${key}"][data-h="${targetH}"]`);
-    // Fallback: find today header
+    // In day view restrict search to panelCur to avoid matching prev/next panels
+    const root=vm==='day'?document.getElementById('panelCur'):document;
+    let cell=(root||document).querySelector(`[data-col="${key}"][data-h="${targetH}"]`);
     if(!cell) cell=document.querySelector('.ch.tc');
-    if(cell) cell.scrollIntoView({behavior:'smooth',block:'start',inline:'nearest'});
+    if(!cell) return;
+    scrollElementToTop(cell);
   });
+}
+
+function scrollElementToTop(el){
+  // Manual scroll that respects the fixed header height (scrollIntoView block:'start'
+  // would put the target behind the header bar on mobile and tablet)
+  const hdrH=(document.querySelector('header')||{offsetHeight:64}).offsetHeight||64;
+  const rect=el.getBoundingClientRect();
+  const dest=window.scrollY+rect.top-hdrH-8;
+  window.scrollTo({top:Math.max(0,dest),behavior:'smooth'});
 }
 
 // ── OVERLAP LAYOUT ─────────────────────────────────────
@@ -1204,7 +1323,7 @@ function buildCompactCard(container, days, today, exp){
         const isDanger = rawName.includes('**');
         const ts=ev.start._ad?'Hele dag':`${p2(ev.start.getHours())}:${p2(ev.start.getMinutes())}`;
         const te=ev.end&&!ev.end._ad?`–${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:' ';
-        html+=`<div class="compact-ev${isQuestion?' question-shift':''}${isDanger?' danger-shift':''}" style="background:${bg};color:${tx};border-left-color:${ac};animation-delay:${idx++*40}ms">
+        html+=`<div class="compact-ev${isQuestion?' question-shift':''}${isDanger?' danger-shift':''}" style="background:${bg};color:${tx};border-left-color:${ac};--sk-bg-color:${bg};--sk-ink-color:${sketchInkFromHex(bg)};animation-delay:${idx++*40}ms;${sketchTextureStyle(ev,'compact')}">
           <span class="et">${ev.title||'(geen titel)'}</span>
           <span class="es">${ts} ${te}</span>
         </div>`;
@@ -1344,10 +1463,10 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
       const row=document.createElement('div');
       row.className='allday-row';row.style.borderRight='none';
       alldayEvs.forEach(ev=>{
-        const cls=ev._cal==='holiday'?'is-holiday':ev._cal==='afspraken'?'is-afspraak':'is-other';
+        const cls=ev._cal==='holiday'?'is-holiday':ev._cal==='afspraken'?'is-afspraak':ev._cal==='main'?'is-main is-other':'is-other';
         const[bg,tx,ac]=ev._cal==='holiday'?['#fde8e8','#c0392b','#c0392b']:ev._cal==='afspraken'?['#e8f0fe','#1a56db','#1a56db']:PALETTES[nameHash(ev.title||'')];
         const bl=document.createElement('div');
-        bl.className=`allday-block ${cls}`;bl.style.cssText=`background:${bg};color:${tx};border-left-color:${ac}`;bl.dataset.baseZ='';bl.textContent=ev.title||'?';
+        bl.className=`allday-block ${cls}`;bl.style.cssText=`background:${bg};color:${tx};border-left-color:${ac};--sk-bg-color:${bg};--sk-ink-color:${sketchInkFromHex(bg)};${sketchTextureStyle(ev,'split-allday')}`;bl.dataset.baseZ='';bl.textContent=ev.title||'?';
         bl.addEventListener('mousemove',e=>showTip(e,ev));bl.addEventListener('mouseleave',hideTip);
         bl.addEventListener('touchend',e=>activateEventBlock(e,bl,ev),{passive:false});
         bl.addEventListener('click',e=>activateEventBlock(e,bl,ev));
@@ -1378,7 +1497,15 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
 
     // Separate main (full-width background) from crew/afspraken (column-assigned)
     const mainEvs=timedEvs.filter(ev=>ev._cal==='main');
-    const crewEvs=timedEvs.filter(ev=>ev._cal!=='main');
+    const crewEvs=(()=>{
+      const all=timedEvs.filter(ev=>ev._cal!=='main');
+      if(!window._mergeShifts)return all;
+      const merged=mergeCrewEvents(all.filter(ev=>ev._cal!=='afspraken'));
+      return[...merged,...all.filter(ev=>ev._cal==='afspraken')];
+    })();
+    const hasAfspraakToday=crewEvs.some(ev=>ev._cal==='afspraken');
+    const hasMainToday=!mainHidden&&mainEvs.length>0;
+    const CLC=(hasMainToday||hasAfspraakToday)?25:0, CWC=100-CLC;
 
     // Place main events full-width at low z-index
     mainEvs.forEach(ev=>{
@@ -1397,9 +1524,14 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
       gridArea.appendChild(dv);
     });
 
-    // Place crew/afspraken events — column-assigned, no overflow strip
-    const assigned=assignColumns(crewEvs,2);
-    assigned.forEach(({ev,col,total})=>{
+    // Place crew/afspraken events — afspraken always full-width, crew events get their own column slots
+    const _afspraakEvs=crewEvs.filter(ev=>ev._cal==='afspraken');
+    const _crewOnly=crewEvs.filter(ev=>ev._cal!=='afspraken');
+    const assigned=[
+      ..._afspraakEvs.map(ev=>({ev,col:0,total:1,overflow:false})),
+      ...applyWeightedColumns(assignColumns(_crewOnly,3))
+    ];
+    assigned.forEach(({ev,col,total,_wCol,_wTotal,_wWeight})=>{
       const sh2=timeHour(ev.start);
       const eh2=eventEndHour(ev,eh);
       const top=(Math.max(sh2,sh)-sh)*CHH;
@@ -1410,26 +1542,31 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
       if(ev._cal==='afspraken'){leftPct=0;rightPct=0;}
       else if(ev._cal==='main'){leftPct=0;rightPct=0;}
       else{
-        const afspraakSlot=rightFloatShiftSlot(ev,crewEvs);
-        if(afspraakSlot){
-          leftPct=afspraakSlot.left;
-          rightPct=afspraakSlot.right;
-        } else {
-        const gap=total<=2?2:1,cw=(100-gap*(total-1))/total;
-        leftPct=col*(cw+gap);rightPct=100-leftPct-cw;
-        }
+        const wc=_wCol??col,wt=_wTotal??total,ww=_wWeight??1;
+        leftPct=CLC+wc*(CWC/wt);rightPct=(wt-wc-ww)*(CWC/wt);
       }
 
       const dv=document.createElement('div');
       const isDanger=(ev.title||'').includes('**');
-      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(isDanger?' danger-shift':'');
-      applyColor(dv,ev.title||'');
+      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(isDanger?' danger-shift':'')+(ev._merged?' merged-shift':'');
+      if(ev._merged){applyMergedColor(dv,ev._merged);}else{applyColor(dv,ev.title||'');applySketchTexture(dv,ev,'split');}
       if(ev._cal==='afspraken'){dv.style.background='#fde8e8';dv.style.color='#7b1111';}
+      if(ev._cal==='afspraken'){
+        dv.style.setProperty('--sk-bg-color','#fde8e8');
+        dv.style.setProperty('--sk-ink-color',sketchInkFromHex('#fde8e8'));
+      }
       dv.style.top=`${top}px`;dv.style.height=`${height}px`;dv.style.left=`${leftPct}%`;dv.style.right=`${rightPct}%`;
       const baseZ=ev._cal==='afspraken'?'3':String(5+col);
       dv.style.zIndex=baseZ;dv.dataset.baseZ=baseZ;
-      dv.style.animationDelay=`${Math.round(Math.pow(animIdx,1.8)*8)}ms`;
-      dv.style.animationDuration=`${300+animIdx*30}ms`;
+      if(ev._cal!=='afspraken'){
+        const wc=_wCol??col,wt=_wTotal??total,ww=_wWeight??1;
+        dv.dataset.crewCol=String(wc);
+        dv.dataset.crewTotal=String(wt);
+        dv.dataset.crewWeight=String(ww);
+        dv.dataset.hasMain=hasMainToday?'1':'0';
+        dv.dataset.hasAfspraak=hasAfspraakToday?'1':'0';
+      }
+      dv.style.animationDelay=`${animIdx * 100}ms`;
       animIdx++;
       const ts=`${p2(ev.start.getHours())}:${p2(ev.start.getMinutes())}`;
       const te=ev.end&&!ev.end._ad?` – ${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:'';
@@ -1449,7 +1586,7 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
 // boundaries land at identical pixels — prevents the double-line artifact.
 function buildGridWithCompact(container, colDefs, weekendDays, today, exp, cm, ci, byDay, sh, eh){
   container.style.display='grid';
-  container.style.gridTemplateColumns='52px repeat(3, 1fr)';
+  container.style.gridTemplateColumns='52px repeat(3, minmax(0,1fr))';
 
   const sgB=document.createElement('div');
   const sgC=document.createElement('div');
@@ -1501,9 +1638,70 @@ function buildGridWithCompact(container, colDefs, weekendDays, today, exp, cm, c
   });
 }
 
+// ── Merge shifts: combine crew events with identical start+end into one block ──
+function mergeCrewEvents(evList){
+  // Key by hour:minute only — robust against seconds/ms differences between ICS feeds
+  const hm=d=>d.getHours()*60+d.getMinutes();
+  const groups={},order=[];
+  evList.forEach(ev=>{
+    const k=hm(ev.start)+'|'+(ev.end?hm(ev.end):-1);
+    if(!groups[k]){groups[k]=[];order.push(k);}
+    groups[k].push(ev);
+  });
+  return order.map(k=>{
+    const g=groups[k];
+    if(g.length===1)return g[0];
+    return{...g[0],title:g.map(e=>e.title||'?').join(' + '),_merged:g};
+  });
+}
+function applyMergedColor(dv,events){
+  const colors=events.map(ev=>{
+    const n=String(ev.title||'').trim();
+    const ci=(CONFIG.crew||[]).find(c=>c.name.toLowerCase()===n.toLowerCase());
+    return ci?ci.color:PALETTES[nameHash(n)][0];
+  });
+  if(colors.length===1){
+    dv.style.background=colors[0];dv.style.color=contrastTextColor(colors[0]);dv.style.borderLeftColor=colors[0];
+  } else {
+    const pct=100/colors.length;
+    const stops=colors.flatMap((c,i)=>[`${c} ${Math.round(i*pct)}%`,`${c} ${Math.round((i+1)*pct)}%`]).join(',');
+    dv.style.background=`linear-gradient(135deg,${stops})`;
+    dv.style.borderLeftColor=colors[0];
+    // Text sits top-left — contrast against the first (top-left) gradient color
+    dv.style.color=contrastTextColor(colors[0]);
+  }
+}
+// For overlap groups that contain merged events, redistribute column widths proportionally
+// to the number of merged volunteers (e.g. a 2-person merge is twice as wide as a single slot).
+function applyWeightedColumns(asgn){
+  const items=asgn.filter(a=>!a.overflow);
+  if(!items.some(a=>a.ev._merged))return asgn;
+  // Union-find connected components by time overlap
+  const p=items.map((_,i)=>i);
+  const find=x=>p[x]===x?x:(p[x]=find(p[x]));
+  const unite=(x,y)=>{p[find(x)]=find(y);};
+  for(let i=0;i<items.length;i++){
+    const si=items[i].ev.start.getTime(),ei=items[i].ev.end?items[i].ev.end.getTime():si+3600000;
+    for(let j=i+1;j<items.length;j++){
+      const sj=items[j].ev.start.getTime(),ej=items[j].ev.end?items[j].ev.end.getTime():sj+3600000;
+      if(si<ej&&ei>sj)unite(i,j);
+    }
+  }
+  const comps=new Map();
+  items.forEach((a,i)=>{const r=find(i);if(!comps.has(r))comps.set(r,[]);comps.get(r).push(a);});
+  comps.forEach(comp=>{
+    if(!comp.some(a=>a.ev._merged))return;
+    comp.sort((a,b)=>a.col-b.col);
+    const tw=comp.reduce((s,a)=>s+(a.ev._merged?a.ev._merged.length:1),0);
+    let off=0;
+    comp.forEach(a=>{const w=a.ev._merged?a.ev._merged.length:1;a._wCol=off;a._wTotal=tw;a._wWeight=w;off+=w;});
+  });
+  return asgn;
+}
+
 function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   container.style.display='grid';
-  container.style.gridTemplateColumns=`52px repeat(${colDefs.length},1fr)`;
+  container.style.gridTemplateColumns=`52px repeat(${colDefs.length},minmax(0,1fr))`;
   container.style.alignContent='start';
 
   // Header row + all-day rows
@@ -1555,7 +1753,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       const isLast=(i===colDefs.length-1);
       h+=`<div class="allday-row" style="border-right:${isLast?'none':'2.5px solid #222'}">`;
       evs.forEach(ev=>{
-        const cls=ev._cal==='holiday'?'is-holiday':ev._cal==='afspraken'?'is-afspraak':'is-other';
+        const cls=ev._cal==='holiday'?'is-holiday':ev._cal==='afspraken'?'is-afspraak':ev._cal==='main'?'is-main is-other':'is-other';
         const [bg,tx,ac]=ev._cal==='holiday'?['#fde8e8','#c0392b','#c0392b']:
                           ev._cal==='afspraken'?['#e8f0fe','#1a56db','#1a56db']:
                           PALETTES[nameHash(ev.title||'')];
@@ -1573,7 +1771,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
         }
         const tipIdx=_adTipEvs.length;
         _adTipEvs.push(ev);
-        h+=`<div class="allday-block ${cls}" style="background:${bg};color:${tx};border-left-color:${ac}" data-adtip="${tipIdx}">${ev.title||'?'}${timeStr}</div>`;
+        h+=`<div class="allday-block ${cls}" style="background:${bg};color:${tx};border-left-color:${ac};--sk-bg-color:${bg};--sk-ink-color:${sketchInkFromHex(bg)};${sketchTextureStyle(ev,'allday')}" data-adtip="${tipIdx}">${ev.title||'?'}${timeStr}</div>`;
       });
       h+='</div>';
     });
@@ -1651,13 +1849,23 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
 
   Object.entries(colEvents).forEach(([colKey,evList])=>{
     const mainEvs=evList.filter(ev=>ev._cal==='main');
-    const crewEvs=evList.filter(ev=>ev._cal!=='main');
+    const crewEvs=(()=>{
+      const all=evList.filter(ev=>ev._cal!=='main');
+      if(!window._mergeShifts)return all;
+      const merged=mergeCrewEvents(all.filter(ev=>ev._cal!=='afspraken'));
+      return[...merged,...all.filter(ev=>ev._cal==='afspraken')];
+    })();
     const hasAfspraakToday=evList.some(ev=>ev._cal==='afspraken');
     const hasMainToday=!mainHidden&&mainEvs.length>0;
-    // Main events render full-width at z-index:2; crew events get all maxCols slots to themselves
-    const crewAssigned=assignColumns(crewEvs,maxCols);
+    // Main events render full-width at z-index:2; afspraken always full-width; crew events get maxCols slots
+    const _afspraakEvs=crewEvs.filter(ev=>ev._cal==='afspraken');
+    const _crewOnly=crewEvs.filter(ev=>ev._cal!=='afspraken');
+    const crewAssigned=[
+      ..._afspraakEvs.map(ev=>({ev,col:0,total:1,overflow:false})),
+      ...applyWeightedColumns(assignColumns(_crewOnly,maxCols))
+    ];
     const assigned=[...mainEvs.map(ev=>({ev,col:0,total:1,overflow:false})),...crewAssigned];
-    assigned.forEach(({ev,col,total,overflow})=>{
+    assigned.forEach(({ev,col,total,overflow,_wCol,_wTotal,_wWeight})=>{
       if(overflow){
         // Don't place in grid — collect for overflow strip
         overflowByCol[colKey]&&overflowByCol[colKey].push(ev);
@@ -1672,14 +1880,20 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       const cell=container.querySelector(`[data-col="${colKey}"][data-h="${cH}"]`);if(!cell)return;
       const dv=document.createElement('div');
       const isDanger=(ev.title||'').includes('**');
-      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(ev._cal==='main'?' main-event':'')+(isDanger?' danger-shift':'');
-      applyColor(dv,ev.title||'');
+      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(ev._cal==='main'?' main-event':'')+(isDanger?' danger-shift':'')+(ev._merged?' merged-shift':'');
+      if(ev._merged){applyMergedColor(dv,ev._merged);}else{applyColor(dv,ev.title||'');applySketchTexture(dv,ev,'grid');}
       if(ev._cal==='main'){
         dv.style.background='linear-gradient(135deg, rgba(173,244,210,.45), rgba(63,190,116,.25))';
         dv.style.color='#0f3c20';
         dv.style.border='2px solid rgba(26,61,43,.45)';
+        dv.style.setProperty('--sk-bg-color','#adf4d2');
+        dv.style.setProperty('--sk-ink-color',sketchInkFromHex('#adf4d2'));
       }
-      if(ev._cal==='afspraken'){dv.style.background='#fde8e8';dv.style.color='#7b1111';}
+      if(ev._cal==='afspraken'){
+        dv.style.background='#fde8e8';dv.style.color='#7b1111';
+        dv.style.setProperty('--sk-bg-color','#fde8e8');
+        dv.style.setProperty('--sk-ink-color',sketchInkFromHex('#fde8e8'));
+      }
       dv.style.top=`${top-(cH-sh)*HH}px`;dv.style.height=`${height}px`;
       // Width calculation
       let leftPct,rightPct;
@@ -1690,9 +1904,11 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       } else {
         // Reserve left 25% for main events and/or afspraken
         const CL=(hasMainToday||hasAfspraakToday)?25:0, CW=100-CL;
-        leftPct=CL+col*(CW/total); rightPct=0;
-        dv.dataset.crewCol=String(col);
-        dv.dataset.crewTotal=String(total);
+        const wc=_wCol??col,wt=_wTotal??total,ww=_wWeight??1;
+        leftPct=CL+wc*(CW/wt); rightPct=(wt-wc-ww)*(CW/wt);
+        dv.dataset.crewCol=String(wc);
+        dv.dataset.crewTotal=String(wt);
+        dv.dataset.crewWeight=String(ww);
         dv.dataset.hasMain=hasMainToday?'1':'0';
         dv.dataset.hasAfspraak=hasAfspraakToday?'1':'0';
       }
@@ -1703,8 +1919,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       dv.style.zIndex=baseZ;
       dv.dataset.baseZ=baseZ;
       const _ai=animIdx++;
-      dv.style.animationDelay=`${Math.round(Math.pow(_ai,1.8)*8)}ms`;
-      dv.style.animationDuration=`${300+_ai*30}ms`;
+      dv.style.animationDelay=`${_ai * 100}ms`;
       const isAD=ev.start._ad;
       const ts=isAD?'':`${p2(ev.start.getHours())}:${p2(ev.start.getMinutes())}`;
       const te=(!isAD&&ev.end&&!ev.end._ad)?` – ${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:' ';
@@ -1753,7 +1968,8 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
           const te=(!ev.start._ad&&ev.end&&!ev.end._ad)?` – ${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:'';
           const row=document.createElement('div');
           row.className='overflow-ev';
-          row.style.cssText=`background:${bg};color:${tx};border-left-color:${ac};animation-delay:${idx*40}ms`;
+          row.style.cssText=`background:${bg};color:${tx};border-left-color:${ac};--sk-bg-color:${bg};--sk-ink-color:${sketchInkFromHex(bg)};animation-delay:${idx*40}ms`;
+          applySketchTexture(row,ev,'overflow');
           row.innerHTML=`<span class="oe-name">${ev.title||'?'}</span><span class="oe-time">${ts?` ${ts}${te}`:''}</span>`;
           row.addEventListener('mousemove',e=>showTip(e,ev));
           row.addEventListener('mouseleave',hideTip);
@@ -1794,7 +2010,7 @@ function updateWeekStrip(){
         render(0);
       } else {
         const label=document.querySelector(`[data-toggle-day="${d.toDateString()}"]`);
-        if(label) label.scrollIntoView({behavior:'smooth',block:'start'});
+        if(label) scrollElementToTop(label);
       }
     });
   });
@@ -1815,7 +2031,14 @@ const tipEl=document.getElementById('tip');
 function showTip(e,ev){
   const ts=ev.start._ad?'Hele dag':`${p2(ev.start.getHours())}:${p2(ev.start.getMinutes())}`;
   const te=ev.end&&!ev.end._ad?` – ${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:' ';
-  tipEl.innerHTML=`<strong>${ev.title||'(geen titel)'}</strong><br>🕐 ${ts}${te}${ev.location?'<br>📍 '+ev.location:''}${ev.desc?'<br><em style="font-size:.68rem;opacity:.85">'+ev.desc.slice(0,100)+'</em>':''}`;
+  let body;
+  if(ev._merged){
+    body=`<strong>${ev._merged.length}× samengevouwen</strong><br>🕐 ${ts}${te}<br>`
+        +ev._merged.map(m=>`<span style="display:block;margin-top:2px">• ${m.title||'?'}</span>`).join('');
+  } else {
+    body=`<strong>${ev.title||'(geen titel)'}</strong><br>🕐 ${ts}${te}${ev.location?'<br>📍 '+ev.location:''}${ev.desc?'<br><em style="font-size:.68rem;opacity:.85">'+ev.desc.slice(0,100)+'</em>':''}`;
+  }
+  tipEl.innerHTML=body;
   tipEl.classList.add('on');moveTip(e);
 }
 function moveTip(e){
@@ -1869,12 +2092,32 @@ function _animateCrewPositions(toHidden){
   const CL=toHidden?0:25,CW=100-CL;
   document.querySelectorAll('.ev:not(.main-event):not(.afspraak)').forEach(el=>{
     if(el.dataset.crewCol===undefined||el.dataset.hasMain!=='1')return;
-    if(toHidden&&el.dataset.hasAfspraak==='1')return;
-    const cc=parseInt(el.dataset.crewCol,10),ct=parseInt(el.dataset.crewTotal,10);
+    if(toHidden){
+      // Stored attribute check
+      if(el.dataset.hasAfspraak==='1')return;
+      // Fallback: live DOM check — compact grid siblings, or week grid cells by date
+      const gridArea=el.closest('[data-compact-grid]');
+      if(gridArea&&gridArea.querySelector('.ev.afspraak'))return;
+      const cell=el.closest('[data-col]');
+      if(cell&&document.querySelector(`[data-col="${cell.dataset.col}"] .ev.afspraak`))return;
+    }
+    const cc=parseInt(el.dataset.crewCol,10),ct=parseInt(el.dataset.crewTotal,10),cw=parseInt(el.dataset.crewWeight||'1',10);
     el.style.left=`${CL+cc*(CW/ct)}%`;
-    el.style.right='0%';
+    el.style.right=`${(ct-cc-cw)*(CW/ct)}%`;
   });
 }
+// Merge shifts toggle
+(function(){
+  window._mergeShifts=localStorage.getItem('mergeShifts')==='1';
+  const chk=document.getElementById('mergeShiftsToggle');
+  if(chk)chk.checked=window._mergeShifts;
+  document.getElementById('mergeShiftsToggle')?.addEventListener('change',e=>{
+    window._mergeShifts=e.target.checked;
+    localStorage.setItem('mergeShifts',window._mergeShifts?'1':'0');
+    render(0);
+  });
+})();
+
 document.getElementById('mainLayerToggle')?.addEventListener('change',(e)=>{
   const nowHidden=!e.target.checked;
   if(nowHidden){
@@ -1923,29 +2166,31 @@ initEditFeatures();
     let g=`<div class="dp-wk-hdr">Wk</div>`+_dpDow.map(d=>`<div class="dp-dow">${d}</div>`).join('');
 
     for(let i=0;i<cells.length;i++){
+      const rowIdx=Math.floor(i/7);
       if(i%7===0){
         // ISO weeks start Monday; for Sunday-start advance Sunday→Monday before computing
         let wd=cells[i].date;
         const _d=cells[i].date;
         const wkStartIso=`${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
         if(_wsd===0&&wd.getDay()===0){wd=new Date(wd);wd.setDate(wd.getDate()+1);}
-        g+=`<div class="dp-wk-num" data-wkstart="${wkStartIso}">${getWeekNumber(wd)}</div>`;
+        g+=`<div class="dp-wk-num" data-wkstart="${wkStartIso}" data-row="${rowIdx}">${getWeekNumber(wd)}</div>`;
       }
       const c=cells[i];
       if(c.other){
-        g+=`<div class="dp-day dp-other">${c.day}</div>`;
+        g+=`<div class="dp-day dp-other" data-row="${rowIdx}">${c.day}</div>`;
       } else {
         const dd=new Date(y,m,c.day);dd.setHours(0,0,0,0);
         const isToday=dd.getTime()===today.getTime();
         const isSel=vm==='week'?(dd>=sowk(anc)&&dd<=addD(sowk(anc),6)):same(dd,anc);
         const cls='dp-day'+(isToday?' dp-today':'')+(isSel&&!isToday?' dp-sel':'');
-        g+=`<div class="${cls}" data-y="${y}" data-m="${m}" data-d="${c.day}">${c.day}</div>`;
+        g+=`<div class="${cls}" data-y="${y}" data-m="${m}" data-d="${c.day}" data-row="${rowIdx}">${c.day}</div>`;
       }
     }
-    document.getElementById('dpGrid').innerHTML=g;
+    const dpGrid=document.getElementById('dpGrid');
+    dpGrid.innerHTML=g;
 
-    document.getElementById('dpGrid').onclick=e=>{
-      // Week number click → jump to that week
+    dpGrid.onclick=e=>{
+      // Week number click → jump to that week in week-view
       const wkEl=e.target.closest('.dp-wk-num[data-wkstart]');
       if(wkEl){
         anc=sowk(new Date(wkEl.dataset.wkstart+'T00:00:00'));
@@ -1956,33 +2201,52 @@ initEditFeatures();
         hidePicker();
         return;
       }
-      // Day click
+      // Day click → go directly to that date in day-view
       const el=e.target.closest('.dp-day');
       if(!el||el.classList.contains('dp-other'))return;
       const chosen=new Date(+el.dataset.y,+el.dataset.m,+el.dataset.d);
-      anc=vm==='week'?sowk(chosen):chosen;
+      anc=chosen;
+      vm='day';
+      document.getElementById('bD').classList.add('on');
+      document.getElementById('bW').classList.remove('on');
       render(0);
       setTimeout(scrollToToday,350);
       hidePicker();
     };
+
+    // Week-row hover: highlight all 7 day cells in the hovered row
+    dpGrid.onmouseover=e=>{
+      const wk=e.target.closest('.dp-wk-num');
+      if(!wk)return;
+      dpGrid.querySelectorAll(`[data-row="${wk.dataset.row}"]`).forEach(el=>el.classList.add('dp-row-hover'));
+    };
+    dpGrid.onmouseout=e=>{
+      const wk=e.target.closest('.dp-wk-num');
+      if(!wk)return;
+      dpGrid.querySelectorAll('.dp-row-hover').forEach(el=>el.classList.remove('dp-row-hover'));
+    };
   }
 
   function showPicker(){
-    dpDate=new Date(anc); // start on current anchor's month
+    dpDate=new Date(anc);
     renderPicker();
-    // Position below the dropdown arrow button
-    const btn=document.getElementById('tBDrop');
-    const r=btn.getBoundingClientRect();
-    dp.style.top=(r.bottom+6)+'px';
-    dp.style.left=Math.min(r.left,window.innerWidth-270)+'px';
-    dp.style.display='block';
+    dp.classList.add('dp-open');
   }
-  function hidePicker(){ dp.style.display='none'; }
+  function hidePicker(){ dp.classList.remove('dp-open'); }
 
-  document.getElementById('tBDrop').onclick=e=>{
+  // Debounced toggle — prevents ghost-click double-fire on touch devices
+  let _dpLastToggle=0;
+  const _dpToggle=e=>{
     e.stopPropagation();
-    dp.style.display==='none'?showPicker():hidePicker();
+    const now=Date.now();
+    if(now-_dpLastToggle<400)return;
+    _dpLastToggle=now;
+    dp.classList.contains('dp-open')?hidePicker():showPicker();
   };
+  document.getElementById('tBDrop').addEventListener('click',_dpToggle);
+  const _hdrBtn=document.getElementById('hdrDateBtn');
+  if(_hdrBtn)_hdrBtn.addEventListener('click',_dpToggle);
+
   document.getElementById('dpPrev').onclick=e=>{
     e.stopPropagation();
     dpDate=new Date(dpDate.getFullYear(),dpDate.getMonth()-1,1);
@@ -1993,9 +2257,10 @@ initEditFeatures();
     dpDate=new Date(dpDate.getFullYear(),dpDate.getMonth()+1,1);
     renderPicker();
   };
-  // Close on outside click
+  // Close when clicking outside the picker (stopPropagation above means
+  // tBDrop and hdrDateBtn clicks never reach this handler)
   document.addEventListener('click',e=>{
-    if(!dp.contains(e.target)&&e.target.id!=='tBDrop')hidePicker();
+    if(!dp.contains(e.target))hidePicker();
   });
 
   // Swipe left/right to go to next/prev month
@@ -2049,41 +2314,40 @@ document.addEventListener('keydown', e => {
 })();
 
 // ── PWA: MANIFEST + INSTALL BUTTON ─────────────────────
-// Build manifest as a proper data-URI (not blob:) so Android/Play Protect
-// does not flag it as an unknown-origin app
-const iconUrl = 'https://parknest.nl/wp-content/uploads/2024/09/Parknest-logo-transp-shadow.png';
-
-const manifest = {
-  id: 'https://parknest.nl/parknest-rooster.html',
-  name: 'Parknest Vrijwilligersrooster',
-  short_name: 'Parknest',
-  description: 'Vrijwilligersrooster van Stichting Buurtbelang Parknest',
-  start_url: 'https://parknest.nl/parknest-rooster.html',
-  scope: 'https://parknest.nl/',
-  display: 'standalone',
-  orientation: 'any',
-  background_color: '#1a3d2b',
-  theme_color: '#1a3d2b',
-  icons: [
-    { src: iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-    { src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-  ]
-};
-
-// Use static manifest file on server; fall back to data-URI locally
-const isLocal = location.protocol === 'file:';
-if(!isLocal){
-  // manifest link already points to parknest-manifest.json — leave it
-} else {
-  // Replace with inline data-URI to avoid CORS error on local file
-  const manifest={id:'/rooster.html',name:'Parknest Vrijwilligersrooster',short_name:'Parknest',start_url:'/rooster.html',scope:'/',display:'standalone',background_color:'#1a3d2b',theme_color:'#1a3d2b',prefer_related_applications:false,icons:[{src:iconUrl,sizes:'192x192',type:'image/png',purpose:'any'},{src:iconUrl,sizes:'512x512',type:'image/png',purpose:'any'},{src:iconUrl,sizes:'512x512',type:'image/png',purpose:'maskable'}]};
-  document.getElementById('manifestLink').href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest));
-}
+// Build manifest dynamically from current origin + OVERLAP_CONFIG branding
+// so it always matches the serving domain (avoids Android security warning)
+(function(){
+  const cfg      = window.OVERLAP_CONFIG || window.ROOSTER_CONFIG || {};
+  const branding = cfg.branding || {};
+  const appDir   = location.pathname.replace(/\/[^\/]*$/, '/');
+  // Always use the square app icons for the manifest (logoUrl is for display, not PWA icons)
+  const icon192  = appDir + 'app/icon-192.png';
+  const icon512  = appDir + 'app/icon-512.png';
+  const themeClr = branding.themeColor || '#1a3d2b';
+  const appName  = branding.appName || branding.name || 'Overlap';
+  const manifest = {
+    id:               location.origin + appDir,
+    name:             appName,
+    short_name:       appName,
+    start_url:        appDir,
+    scope:            appDir,
+    display:          'standalone',
+    orientation:      'any',
+    background_color: themeClr,
+    theme_color:      themeClr,
+    prefer_related_applications: false,
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const link = document.getElementById('manifestLink');
+  if(link) link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+})();
 
 // Chrome/Edge/Android install prompt
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{
-  // Don't call preventDefault — that suppresses the mini-infobar on Android
   deferredPrompt=e;
   const b=document.getElementById('installBtn');
   if(b) b.style.display='flex';
@@ -2095,14 +2359,29 @@ window.addEventListener('appinstalled',()=>{
   const s=document.getElementById('installSection');if(s)s.style.display='none';
 });
 
+// iOS Safari: beforeinstallprompt never fires — detect and show button manually
+(function(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  if(isIOS && !window.navigator.standalone){
+    const b=document.getElementById('installBtn');if(b)b.style.display='flex';
+    const s=document.getElementById('installSection');if(s)s.style.display='';
+  }
+})();
+
 document.getElementById('installBtn').addEventListener('click',async()=>{
   if(deferredPrompt){
     deferredPrompt.prompt();
     const{outcome}=await deferredPrompt.userChoice;
     deferredPrompt=null;
-    if(outcome==='accepted')document.getElementById('installBtn').style.display='none';
+    if(outcome==='accepted'){
+      document.getElementById('installBtn').style.display='none';
+      const s=document.getElementById('installSection');if(s)s.style.display='none';
+    }
   } else {
-    alert('Voeg toe aan startscherm:\n\n📱 iPhone/iPad:\nTik op het Deel-icoon (□↑) onderaan Safari → "Zet op beginscherm"\n\n🤖 Android (Chrome):\nTik op menu (⋮) → "Toevoegen aan startscherm"\n\n💻 Desktop Chrome/Edge:\nKlik op het ⊕ icoon rechts in de adresbalk');
+    // Toggle iOS/fallback instruction panel
+    const tip=document.getElementById('iosInstallTip');
+    if(tip) tip.style.display = tip.style.display==='none' ? '' : 'none';
   }
 });
 
@@ -2227,8 +2506,8 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
     });
   }
 
-  async function shareAsPng(){
-    const btn=document.getElementById('shareDrop');
+  async function shareAsPng(e){
+    const btn=(e&&e.currentTarget)||document.getElementById('shareBtn');
     const origHTML=btn.innerHTML;
     btn.disabled=true;
     btn.innerHTML='<span>…</span>';
@@ -2254,6 +2533,17 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
         logging:false,
         height:panel.scrollHeight,
         windowHeight:panel.scrollHeight,
+        onclone:(doc)=>{
+          doc.body.classList.add('share-capture');
+          // Remove sketchy.css — html2canvas can't parse color-mix() in its gradients
+          doc.querySelectorAll('link[rel="stylesheet"]').forEach(l=>{
+            if(l.href&&l.href.includes('sketchy.css')) l.remove();
+          });
+          doc.querySelectorAll('.ev,.compact-ev,.overflow-ev,.allday-block').forEach(el=>{
+            el.style.animation='none';
+            el.style.opacity=el.classList.contains('ev')?'0.9':'1';
+          });
+        },
       });
 
       // Restore animations
@@ -2374,7 +2664,7 @@ applyLocaleUI();
   }
 })();
 
-fetchEvents();
+fetchEvents().then(()=>setTimeout(scrollToToday,400));
 
 // Auto-refresh — interval configurable via window._overlapRefreshMin (0 = off)
 var _refreshTimer = null;
@@ -2390,14 +2680,17 @@ window._setRefreshInterval = function(min){
 };
 
 // ── EVENT ANIMATION STYLE SWITCHER ───────────────────────
-// Tap the period label (#pl) to cycle: Grow → Rise → Fade → Grow…
+// Tap the period label (#pl) to cycle: Grow → Rise → Fade → Flip X → Flip Y → Grow…
 (()=>{
   const STYLES=[
     {key:'grow', anim:'evInGrow', dur:'.44s', ease:'cubic-bezier(0.34,1.56,0.64,1)', label:'Grow ✦'},
     {key:'rise', anim:'evInRise', dur:'.38s', ease:'cubic-bezier(0.22,1,0.36,1)',    label:'Rise ↑'},
     {key:'fade', anim:'evInFade', dur:'.30s', ease:'cubic-bezier(0.4,0,0.2,1)',      label:'Fade ◌'},
+    {key:'flipx', anim:'evInFlipX', dur:'.85s', ease:'cubic-bezier(0.2,0.8,0.2,1)',   label:'Flip X'},
+    {key:'flipy', anim:'evInFlipY', dur:'2.6s',  ease:'linear',                        label:'Flip Y'},
   ];
   let cur = +(localStorage.getItem('evAnimIdx')||0);
+  if(!STYLES[cur]) cur=0;
   function apply(){
     const s=STYLES[cur];
     const r=document.documentElement.style;
@@ -2405,17 +2698,15 @@ window._setRefreshInterval = function(min){
     r.setProperty('--ev-dur', s.dur);
     r.setProperty('--ev-ease',s.ease);
   }
-  apply();
-  const pl=document.getElementById('pl');
-  pl.style.cursor='pointer';
-  pl.title='Tik om animatiestijl te wisselen';
-  pl.addEventListener('click',()=>{
-    cur=(cur+1)%STYLES.length;
+  window._getEventAnimationStyle=()=>cur;
+  window._setEventAnimationStyle=(idx)=>{
+    cur=+idx;
+    if(!STYLES[cur]) cur=0;
     localStorage.setItem('evAnimIdx',cur);
     apply();
     render(0);
-    showShareToast('Animatie: '+STYLES[cur].label);
-  });
+  };
+  apply();
 })();
 
 // Logo tap = force reload with spin animation (keeps spinning until fetch completes)

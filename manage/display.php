@@ -162,7 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'save
         $b   = &$cfg['branding'];
         $d   = &$cfg['defaults'];
 
-        $b['version']         = trim($_POST['version']         ?? ($b['version']         ?? '1.0'));
         $b['appName']         = trim($_POST['appName']         ?? '');
         $b['appShortName']    = trim($_POST['appShortName']    ?? '');
         $b['appDescription']  = trim($_POST['appDescription']  ?? '');
@@ -382,12 +381,6 @@ include '_header.php';
           <span class="field-hint">Used in generated share image filenames.</span>
         </div>
 
-        <div class="field">
-          <label for="version">Version</label>
-          <input type="text" id="version" name="version"
-                 value="<?= htmlspecialchars($b['version'] ?? '1.0') ?>"
-                 placeholder="1.0">
-        </div>
 
       </div>
     </div>

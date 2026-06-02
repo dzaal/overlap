@@ -6,7 +6,8 @@ if (isset($_GET['overlap_upd'])) {
     $ts = max(
         filemtime(__FILE__),
         is_file(__DIR__.'/app/overlap.js')  ? filemtime(__DIR__.'/app/overlap.js')  : 0,
-        is_file(__DIR__.'/app/overlap.css') ? filemtime(__DIR__.'/app/overlap.css') : 0
+        is_file(__DIR__.'/app/overlap.css') ? filemtime(__DIR__.'/app/overlap.css') : 0,
+        is_file(__DIR__.'/app/sketchy.css') ? filemtime(__DIR__.'/app/sketchy.css') : 0
     );
     echo json_encode(['ts' => $ts]);
     exit;
@@ -46,11 +47,24 @@ if (file_exists($_cfgFile)) {
     } catch (Throwable $e) { /* keep defaults */ }
 }
 
+// User-selected themes are stored in a cookie by the in-app menu. Resolve that
+// before rendering <link> tags so standalone theme CSS files such as nova.css load.
+if (!empty($_COOKIE['overlap_settings'])) {
+    $_userSettings = json_decode(rawurldecode((string)$_COOKIE['overlap_settings']), true);
+    if (is_array($_userSettings) && !empty($_userSettings['theme'])) {
+        $_themeVal = preg_replace('/[^a-z0-9_-]/i', '', (string)$_userSettings['theme']);
+        if ($_themeVal && file_exists(__DIR__ . '/app/' . $_themeVal . '.css')) {
+            $_theme = $_themeVal;
+        }
+    }
+}
+
 $_iconUrl   = $_logoUrl ?: 'app/icon-192.png';
 $_overlapTs = max(
     filemtime(__FILE__),
     is_file(__DIR__.'/app/overlap.js')  ? filemtime(__DIR__.'/app/overlap.js')  : 0,
-    is_file(__DIR__.'/app/overlap.css') ? filemtime(__DIR__.'/app/overlap.css') : 0
+    is_file(__DIR__.'/app/overlap.css') ? filemtime(__DIR__.'/app/overlap.css') : 0,
+    is_file(__DIR__.'/app/sketchy.css') ? filemtime(__DIR__.'/app/sketchy.css') : 0
 );
 ?><!DOCTYPE html>
 <html lang="nl">
@@ -65,12 +79,14 @@ $_overlapTs = max(
 <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($_appName) ?>">
 <meta name="theme-color" content="<?= htmlspecialchars($_themeColor) ?>">
 <link rel="manifest" href="app/overlap-manifest.json" id="manifestLink">
+<link rel="icon" type="image/png" sizes="192x192" href="app/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="app/icon-512.png">
 <link rel="apple-touch-icon" href="<?= htmlspecialchars($_iconUrl) ?>" id="appleIcon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app/overlap.css?v=16">
+<link rel="stylesheet" href="app/overlap.css?v=28">
 <?php if ($_theme !== 'blockery' && $_theme !== 'softy'): // blockery+softy styles are in overlap.css ?>
-<link rel="stylesheet" href="app/<?= htmlspecialchars($_theme) ?>.css?v=1">
+<link rel="stylesheet" href="app/<?= htmlspecialchars($_theme) ?>.css?v=<?= (int)filemtime(__DIR__ . '/app/' . $_theme . '.css') ?>">
 <?php endif; ?>
 <style>:root{--gd:<?= htmlspecialchars($_themeColor) ?>;--cr:<?= htmlspecialchars($_fgColor) ?>;--ac:<?= htmlspecialchars($_accentColor) ?>}</style>
 </head>
@@ -102,15 +118,6 @@ $_overlapTs = max(
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
   </div>
-  <!-- Date picker popup -->
-  <div id="datePicker" style="display:none">
-    <div id="dpHeader">
-      <button id="dpPrev">&#8592;</button>
-      <span id="dpMonthLabel"></span>
-      <button id="dpNext">&#8594;</button>
-    </div>
-    <div id="dpGrid"></div>
-  </div>
   <!-- View toggle: Week | Day (moves to row 2 on mobile) -->
   <div class="vt">
     <button class="vb on" id="bW">Week</button>
@@ -121,6 +128,11 @@ $_overlapTs = max(
     <input type="checkbox" id="mainLayerToggle" checked>
     <label for="mainLayerToggle">Events</label>
   </div>
+  <!-- Merge same-time shifts toggle -->
+  <div class="layer-toggle" title="Diensten met dezelfde tijd samenvoegen">
+    <input type="checkbox" id="mergeShiftsToggle">
+    <label for="mergeShiftsToggle">Merge</label>
+  </div>
   <!-- Row break: invisible on desktop, forces row 2 on mobile -->
   <div class="hdr-break"></div>
   <!-- Date range (far right on desktop, row 2 on mobile) -->
@@ -128,6 +140,16 @@ $_overlapTs = max(
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     <span id="pl">…</span>
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+  <div class="hdr-share-group" id="hdrShareGroup" aria-label="Delen">
+    <button class="tb hdr-share-btn" id="shareBtn" title="Deel als afbeelding">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg>
+      <span class="share-label">Deel</span>
+    </button>
+    <button class="tb hdr-link-btn" id="shareDrop" title="Kopieer link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span class="share-label">Link</span>
+    </button>
   </div>
   <div id="ls">Laden…</div>
   <div id="authBar" class="auth-bar" style="display:none;">
@@ -137,6 +159,17 @@ $_overlapTs = max(
     <span id="googleStatus" style="font-size:.72rem;font-weight:600;margin-left:8px;"></span>
   </div>
 </header>
+<!-- datepicker drawer (in-page, slides down below header) -->
+<div id="datePicker">
+  <div class="dp-inner">
+    <div id="dpHeader">
+      <button id="dpPrev">&#8592;</button>
+      <span id="dpMonthLabel"></span>
+      <button id="dpNext">&#8594;</button>
+    </div>
+    <div id="dpGrid"></div>
+  </div>
+</div>
 
 <div id="menuOverlay"></div>
 
@@ -154,43 +187,27 @@ $_overlapTs = max(
     </button>
   </div>
 
-  <!-- Install as app (shown by JS when PWA install prompt is available) -->
+  <!-- Install as app (shown by JS when PWA install prompt is available, or on iOS) -->
   <div id="installSection" style="display:none" class="stp-section">
     <button class="stp-btn stp-btn-install" id="installBtn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v13M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
       Installeer als app
     </button>
+    <div id="iosInstallTip" style="display:none;margin-top:8px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:.78rem;color:#0c4a6e;line-height:1.6">
+      <strong>iPhone / iPad:</strong><br>
+      Tik op <strong>□↑</strong> (Delen) onderaan Safari<br>
+      → <strong>"Zet op beginscherm"</strong>
+    </div>
   </div>
 
   <!-- Print -->
-  <div class="stp-section">
-    <div class="stp-label">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-      Afdrukken
-    </div>
-    <button class="stp-btn" id="printLandBtn">
-      <svg width="15" height="11" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="22" height="16" rx="2"/><line x1="1" y1="5" x2="23" y2="5"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="12" x2="15" y2="12"/></svg>
-      Liggend (A4 ↔)
+  <div class="stp-section stp-section-print">
+    <span class="stp-print-label">Print<br>Orientation</span>
+    <button class="stp-print-btn" id="printLandBtn" title="Afdrukken liggend (A4 ↔)">
+      <svg width="28" height="20" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="26" height="18" rx="1.5"/></svg>
     </button>
-    <button class="stp-btn" id="printPortOpt">
-      <svg width="11" height="15" viewBox="0 0 16 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="14" height="20" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="4" y1="10" x2="12" y2="10"/><line x1="4" y1="13" x2="10" y2="13"/></svg>
-      Staand (A4 ↕)
-    </button>
-  </div>
-
-  <!-- Share -->
-  <div class="stp-section">
-    <div class="stp-label">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-      Delen
-    </div>
-    <button class="stp-btn" id="shareBtn">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg>
-      Deel als afbeelding
-    </button>
-    <button class="stp-btn" id="shareDrop">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-      Kopieer link
+    <button class="stp-print-btn" id="printPortOpt" title="Afdrukken staand (A4 ↕)">
+      <svg width="20" height="28" viewBox="0 0 20 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="18" height="26" rx="1.5"/></svg>
     </button>
   </div>
 
@@ -200,39 +217,49 @@ $_overlapTs = max(
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Instellingen
     </div>
-    <div class="stp-label" style="margin-top:0;margin-bottom:6px;opacity:.6">Thema</div>
-    <div class="stp-opts" style="margin-bottom:12px">
-      <label class="stp-opt"><input type="radio" name="stp-theme" value="blockery"><span>Blockery</span></label>
-      <label class="stp-opt"><input type="radio" name="stp-theme" value="softy"><span>Softy</span></label>
-      <label class="stp-opt"><input type="radio" name="stp-theme" value="nova"><span>Nova</span></label>
-    </div>
-    <div class="stp-label" style="margin-top:0;margin-bottom:6px;opacity:.6">Week start op</div>
-    <div class="stp-opts">
-      <label class="stp-opt"><input type="radio" name="stp-week" value="1"><span>Maandag</span></label>
-      <label class="stp-opt"><input type="radio" name="stp-week" value="0"><span>Zondag</span></label>
-    </div>
-  </div>
-
-  <!-- Auto-refresh interval -->
-  <div class="stp-section">
-    <div class="stp-label">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-      Automatisch vernieuwen
-    </div>
-    <div class="stp-opts" id="refreshOpts">
-      <label class="stp-opt" data-min="5"><span>5 min</span></label>
-      <label class="stp-opt" data-min="15"><span>15 min</span></label>
-      <label class="stp-opt" data-min="30"><span>30 min</span></label>
-      <label class="stp-opt" data-min="60"><span>1 uur</span></label>
-      <label class="stp-opt" data-min="0"><span>Uit</span></label>
-    </div>
+    <label class="stp-field">
+      <span>Thema</span>
+      <select id="stpThemeSelect">
+        <option value="blockery">Blockery</option>
+        <option value="softy">Softy</option>
+        <option value="nova">Nova</option>
+        <option value="sketchy">Sketchy</option>
+      </select>
+    </label>
+    <label class="stp-field">
+      <span>Animatie</span>
+      <select id="stpAnimSelect">
+        <option value="0">Grow</option>
+        <option value="1">Rise</option>
+        <option value="2">Fade</option>
+        <option value="3">Flip X</option>
+        <option value="4">Flip Y</option>
+      </select>
+    </label>
+    <label class="stp-field">
+      <span>Vernieuwen</span>
+      <select id="stpRefreshSelect">
+        <option value="5">5 min</option>
+        <option value="15">15 min</option>
+        <option value="30">30 min</option>
+        <option value="60">1 uur</option>
+        <option value="0">Uit</option>
+      </select>
+    </label>
+    <label class="stp-field">
+      <span>Week start</span>
+      <select id="stpWeekSelect">
+        <option value="1">Maandag</option>
+        <option value="0">Zondag</option>
+      </select>
+    </label>
   </div>
 
   <div class="stp-footer">
     <button id="stpReset">Herstel standaardinstellingen</button>
     <div class="stp-about">
       <div class="stp-about-name">Overlap</div>
-      <div class="stp-about-ver" id="stp-ver">v<?= htmlspecialchars(($_cfg['branding']['version'] ?? '1.0')) ?></div>
+      <div class="stp-about-ver" id="stp-ver">v<?= date('Y.m.d', filemtime(__DIR__ . '/app/overlap.js')) ?></div>
       <div class="stp-about-meta">
         Door <a href="https://digizaal.net" target="_blank" rel="noopener">Digizaal</a>
         &nbsp;·&nbsp;
@@ -286,14 +313,14 @@ $_overlapTs = max(
     if (s.theme) {
       document.body.className = document.body.className.replace(/\btheme-\w+\b/, 'theme-' + s.theme);
     }
-    if (s.weekStart !== undefined && cfg && cfg.defaults) {
+if (s.weekStart !== undefined && cfg && cfg.defaults) {
       cfg.defaults.weekStartDay = +s.weekStart;
     }
     if (s.refreshMin !== undefined) window._overlapRefreshMin = +s.refreshMin;
   } catch (e) {}
 })();
 </script>
-<script src="app/overlap.js?v=120"></script>
+<script src="app/overlap.js?v=141"></script>
 <script>
 // ── Disable built-in holiday detection ───────────────────────────────────────
 // overlap.js has hardcoded Dutch public holidays and Amsterdam school vacations.
@@ -544,21 +571,14 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
   }
 
   function syncUI() {
-    var theme = currentTheme();
-    var ws    = currentWeekStart();
-    var rm    = currentRefreshMin();
-    document.querySelectorAll('.stp-opt').forEach(function (opt) {
-      var inp = opt.querySelector('input');
-      if (inp) {
-        var active = (inp.name === 'stp-theme' && inp.value === theme)
-                  || (inp.name === 'stp-week'  && +inp.value === ws);
-        opt.classList.toggle('active', active);
-      }
-    });
-    // Refresh opts use data-min instead of radio inputs
-    document.querySelectorAll('#refreshOpts .stp-opt').forEach(function (opt) {
-      opt.classList.toggle('active', +opt.dataset.min === rm);
-    });
+    var themeSel = document.getElementById('stpThemeSelect');
+    var animSel = document.getElementById('stpAnimSelect');
+    var refreshSel = document.getElementById('stpRefreshSelect');
+    var weekSel = document.getElementById('stpWeekSelect');
+    if (themeSel) themeSel.value = currentTheme();
+    if (animSel) animSel.value = String(typeof window._getEventAnimationStyle === 'function' ? window._getEventAnimationStyle() : +(localStorage.getItem('evAnimIdx') || 0));
+    if (refreshSel) refreshSel.value = String(currentRefreshMin());
+    if (weekSel) weekSel.value = String(currentWeekStart());
   }
 
   function openPanel() {
@@ -592,30 +612,32 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
     });
   });
 
-  // Radio changes
-  document.querySelectorAll('.stp-opt').forEach(function (opt) {
-    opt.addEventListener('click', function () {
-      var inp = opt.querySelector('input');
-      inp.checked = true;
-      var s = readCookie();
-      if (inp.name === 'stp-theme')  s.theme     = inp.value;
-      if (inp.name === 'stp-week')   s.weekStart = +inp.value;
-      applyAndReload(s);
-    });
+  document.getElementById('stpThemeSelect')?.addEventListener('change', function () {
+    var s = readCookie();
+    s.theme = this.value;
+    applyAndReload(s);
   });
 
-  // Auto-refresh interval selector (no reload needed)
-  document.querySelectorAll('#refreshOpts .stp-opt').forEach(function (opt) {
-    opt.addEventListener('click', function () {
-      var min = +opt.dataset.min;
-      var s = readCookie();
-      s.refreshMin = min;
-      writeCookie(s);
-      if (typeof window._setRefreshInterval === 'function') window._setRefreshInterval(min);
-      document.querySelectorAll('#refreshOpts .stp-opt').forEach(function (o) {
-        o.classList.toggle('active', o === opt);
-      });
-    });
+  document.getElementById('stpWeekSelect')?.addEventListener('change', function () {
+    var s = readCookie();
+    s.weekStart = +this.value;
+    applyAndReload(s);
+  });
+
+  document.getElementById('stpRefreshSelect')?.addEventListener('change', function () {
+    var min = +this.value;
+    var s = readCookie();
+    s.refreshMin = min;
+    writeCookie(s);
+    if (typeof window._setRefreshInterval === 'function') window._setRefreshInterval(min);
+  });
+
+  document.getElementById('stpAnimSelect')?.addEventListener('change', function () {
+    var idx = +this.value;
+    localStorage.setItem('evAnimIdx', idx);
+    if (typeof window._setEventAnimationStyle === 'function') {
+      window._setEventAnimationStyle(idx);
+    }
   });
 
   // Reset — explicitly write Monday start so config-file value is overridden
@@ -623,17 +645,13 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
     var s = readCookie();
     delete s.theme;
     s.weekStart = 1; // Monday
+    delete s.refreshMin;
     writeCookie(s);
+    localStorage.removeItem('evAnimIdx');
     location.reload();
   });
 })();
 
-// Date range button opens the date picker (same as Today dropdown arrow)
-document.getElementById('hdrDateBtn')?.addEventListener('click', function (e) {
-  if (!e.target.closest('#datePicker')) {
-    document.getElementById('tBDrop')?.click();
-  }
-});
 
 // ── Update detection ──────────────────────────────────────────────────────────
 (function () {
@@ -748,8 +766,8 @@ body.menu-open #menuOverlay { display: block; }
   position: fixed;
   top: 0; left: 0; bottom: 0;
   z-index: 600;
-  background: var(--gd, #1a3d2b);
-  color: var(--cr, #f8f5ee);
+  background: #fff;
+  color: #1c1c1c;
   width: 272px;
   max-width: 88vw;
   overflow-y: auto;
@@ -764,8 +782,8 @@ body.menu-open #menuOverlay { display: block; }
 body.menu-open #settingsPanel { transform: translateX(0); }
 
 .stp-head {
-  background: rgba(0,0,0,.22);
-  color: var(--cr, #f8f5ee);
+  background: #fff;
+  color: #1c1c1c;
   padding: 0 16px;
   min-height: 52px;
   font-size: .9rem;
@@ -773,13 +791,13 @@ body.menu-open #settingsPanel { transform: translateX(0); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(0,0,0,.08);
   flex-shrink: 0;
 }
 .stp-head button {
-  background: rgba(255,255,255,.12);
+  background: #f2f4f3;
   border: none;
-  color: var(--cr, #f8f5ee);
+  color: #333;
   cursor: pointer;
   width: 28px;
   height: 28px;
@@ -792,17 +810,18 @@ body.menu-open #settingsPanel { transform: translateX(0); }
   transition: .12s;
 }
 .stp-head button:hover { opacity: 1; background: rgba(255,255,255,.22); }
+.stp-head button:hover { background: #e7ebe9; }
 
 .stp-section {
   padding: 14px 16px 12px;
-  border-bottom: 1px solid rgba(255,255,255,.07);
+  border-bottom: 1px solid rgba(0,0,0,.08);
 }
 .stp-label {
   font-size: .64rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: rgba(255,255,255,.45);
+  color: #6a756f;
   margin-bottom: 10px;
   display: flex;
   align-items: center;
@@ -814,10 +833,10 @@ body.menu-open #settingsPanel { transform: translateX(0); }
   gap: 9px;
   width: 100%;
   padding: 10px 12px;
-  background: rgba(255,255,255,.1);
-  color: var(--cr, #f8f5ee);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 9px;
+  background: #f6f7f6;
+  color: #1c1c1c;
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius: 7px;
   font-size: .83rem;
   font-weight: 500;
   font-family: 'DM Sans', sans-serif;
@@ -827,7 +846,37 @@ body.menu-open #settingsPanel { transform: translateX(0); }
   text-align: left;
 }
 .stp-btn:last-child { margin-bottom: 0; }
-.stp-btn:hover { background: rgba(255,255,255,.2); }
+.stp-section-print {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+}
+.stp-print-label {
+  flex: 1;
+  font-size: .72rem;
+  font-weight: 600;
+  color: #6a756f;
+  line-height: 1.3;
+}
+.stp-print-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  background: #f6f7f6;
+  color: #1c1c1c;
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background .14s, transform .1s;
+}
+.stp-print-btn svg { opacity: .75; }
+.stp-print-btn:hover { background: #edf0ee; }
+.stp-print-btn:active { transform: scale(.97); }
+.stp-btn:hover { background: #edf0ee; }
 .stp-btn:active { transform: scale(.97); }
 .stp-btn svg { opacity: .75; flex-shrink: 0; }
 .stp-btn.btn-pink {
@@ -837,6 +886,39 @@ body.menu-open #settingsPanel { transform: translateX(0); }
 }
 .stp-btn.btn-pink svg { opacity: .9; }
 .stp-btn.btn-pink:hover { background: rgba(244,63,94,.38); }
+
+.stp-field {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: .8rem;
+  color: #39433e;
+}
+.stp-field:last-child { margin-bottom: 0; }
+.stp-field span {
+  font-weight: 600;
+}
+.stp-field select {
+  width: 100%;
+  min-width: 0;
+  appearance: auto;
+  border: 1px solid rgba(0,0,0,.14);
+  border-radius: 7px;
+  background: #fff;
+  color: #1c1c1c;
+  font: 600 .8rem 'DM Sans', sans-serif;
+  padding: 7px 8px;
+}
+.stp-field select:focus {
+  outline: 2px solid rgba(45,106,79,.28);
+  outline-offset: 1px;
+}
+.stp-field option {
+  color: #1c1c1c;
+  background: #fff;
+}
 
 .stp-opts {
   display: flex;
@@ -853,7 +935,7 @@ body.menu-open #settingsPanel { transform: translateX(0); }
   font-size: .8rem;
   font-weight: 500;
   background: rgba(255,255,255,.08);
-  color: var(--cr, #f8f5ee);
+  color: #1c1c1c;
   transition: background .12s, border-color .12s;
   white-space: nowrap;
   user-select: none;
@@ -872,11 +954,11 @@ body.menu-open #settingsPanel { transform: translateX(0); }
 #stpReset {
   width: 100%;
   padding: 9px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 9px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 7px;
   font-size: .76rem;
-  color: rgba(255,255,255,.45);
+  color: #6a756f;
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
   transition: .14s;
@@ -887,30 +969,30 @@ body.menu-open #settingsPanel { transform: translateX(0); }
 .stp-about {
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid rgba(0,0,0,.08);
   text-align: center;
 }
 .stp-about-name {
   font-size: .78rem;
   font-weight: 700;
-  color: var(--cr, #f8f5ee);
+  color: #1c1c1c;
   letter-spacing: .04em;
 }
 .stp-about-ver {
   font-size: .7rem;
-  color: rgba(255,255,255,.4);
+  color: #7a837e;
   margin: 2px 0 6px;
   font-variant-numeric: tabular-nums;
 }
 .stp-about-meta {
   font-size: .72rem;
-  color: rgba(255,255,255,.35);
+  color: #7a837e;
 }
 .stp-about-meta a {
-  color: rgba(255,255,255,.55);
+  color: #2d6a4f;
   text-decoration: none;
 }
-.stp-about-meta a:hover { color: var(--cr, #f8f5ee); text-decoration: underline; }
+.stp-about-meta a:hover { color: #1a3d2b; text-decoration: underline; }
 
 /* Update notice button */
 .stp-btn-update {

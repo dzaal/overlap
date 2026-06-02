@@ -1,0 +1,834 @@
+@import url(https://fonts.googleapis.com/css?family=Architects+Daughter);
+
+/*
+ * Sketchy: hand-drawn colored-pencil theme for Overlap.
+ * Loaded as a standalone theme when body has .theme-sketchy.
+ */
+
+/* ── handdrawn.css icon font (MIT, fxaeberhard.github.io/handdrawn.css) ─────── */
+@font-face {
+  font-family: "handdrawn-icons";
+  src: url("../assets/fonts/handdrawn-icons.woff") format("woff"),
+       url("../assets/fonts/handdrawn-icons.ttf")  format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+body.theme-sketchy {
+  --sk-paper: #fff9e9;
+  --sk-ink: #2f2b24;
+  --sk-blue: #8fc7e8;
+  --sk-yellow: #f8df8e;
+  --sk-pencil-fill: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='none'/%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M1 5h9M14 5h14M34 6h8M47 5h15M4 11h7M15 12h19M39 11h7M51 12h10M0 18h15M20 17h10M35 18h18M57 17h6M5 24h21M31 24h8M44 25h16M1 31h8M14 31h17M36 32h11M52 31h10M0 38h20M26 38h12M43 39h19M6 45h10M22 45h24M52 46h8M2 53h15M22 54h9M36 53h21M59 53h4M0 61h11M17 60h18M41 61h20' stroke-opacity='.4' stroke-width='1.05'/%3E%3Cpath d='M4 8h4M12 15h6M29 9h4M45 16h8M10 21h5M25 27h8M38 22h4M53 28h6M5 35h10M22 34h5M33 42h9M49 36h6M13 50h7M30 49h5M45 57h8M3 58h5M22 62h6M39 3h6M55 8h5' stroke-opacity='.6' stroke-width='.75'/%3E%3Cpath d='M0 13h3M22 13h3M42 5h3M60 23h3M12 29h3M37 29h3M19 42h3M56 43h3M7 57h3M28 58h3M48 50h3M15 3h3M33 15h3M50 21h3' stroke-opacity='.82' stroke-width='.62'/%3E%3C/g%3E%3C/svg%3E");
+  --sk-pencil-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' fill='none'/%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M2 6h7M13 7h10M29 6h13M0 16h13M18 16h7M30 17h11M4 26h15M24 27h6M35 26h8M0 37h9M14 37h15M34 38h8' stroke-opacity='.34' stroke-width='.72'/%3E%3Cpath d='M6 11h4M20 11h5M36 12h4M9 22h7M27 21h4M3 32h6M18 33h5M38 33h4M11 41h5M25 4h5' stroke-opacity='.5' stroke-width='.5'/%3E%3C/g%3E%3C/svg%3E");
+  --sk-paper-tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='76' height='76' viewBox='0 0 76 76'%3E%3Crect width='76' height='76' fill='none'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='7' cy='9' r='.8' fill-opacity='.32'/%3E%3Ccircle cx='22' cy='5' r='.45' fill-opacity='.42'/%3E%3Ccircle cx='41' cy='12' r='.65' fill-opacity='.28'/%3E%3Ccircle cx='61' cy='7' r='.55' fill-opacity='.38'/%3E%3Ccircle cx='13' cy='24' r='.5' fill-opacity='.34'/%3E%3Ccircle cx='33' cy='28' r='.9' fill-opacity='.26'/%3E%3Ccircle cx='54' cy='23' r='.45' fill-opacity='.43'/%3E%3Ccircle cx='70' cy='31' r='.7' fill-opacity='.3'/%3E%3Ccircle cx='5' cy='43' r='.55' fill-opacity='.4'/%3E%3Ccircle cx='25' cy='48' r='.7' fill-opacity='.25'/%3E%3Ccircle cx='47' cy='42' r='.5' fill-opacity='.36'/%3E%3Ccircle cx='66' cy='51' r='.85' fill-opacity='.27'/%3E%3Ccircle cx='16' cy='66' r='.75' fill-opacity='.3'/%3E%3Ccircle cx='38' cy='61' r='.5' fill-opacity='.42'/%3E%3Ccircle cx='57' cy='69' r='.65' fill-opacity='.31'/%3E%3C/g%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round' stroke-opacity='.2'%3E%3Cpath d='M4 18c6-2 10 1 15-1M28 18c5 1 9-1 14 0M52 17c6-1 11 1 18-1M8 37c8 1 13-2 20 0M39 36c5-1 9 1 15 0M2 58c7-1 12 2 19 0M31 56c9 1 15-2 23 0' stroke-width='.55'/%3E%3C/g%3E%3C/svg%3E");
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255,255,255,.8) 0 2px, transparent 3px),
+    radial-gradient(circle at 76% 24%, rgba(0,0,0,.035) 0 1px, transparent 2px),
+    repeating-linear-gradient(53deg, rgba(85,65,35,.035) 0 1px, transparent 1px 9px),
+    var(--sk-paper);
+  color: var(--sk-ink);
+  font-family: 'Architects Daughter', cursive;
+}
+
+/* ── HEADER BACKGROUND ───────────────────────────────────────────────────── */
+body.theme-sketchy header {
+  background:
+    /* Crosshatch: two opposing pencil-stroke directions */
+    repeating-linear-gradient( 37deg, rgba(255,255,255,.1)  0 1px, transparent 1px  8px),
+    repeating-linear-gradient(-43deg, rgba(0,0,0,.055)      0 1px, transparent 1px 12px),
+    /* Fine perpendicular grain */
+    repeating-linear-gradient( 82deg, rgba(255,255,255,.04) 0 1px, transparent 1px  5px),
+    /* Paper-tooth specks */
+    radial-gradient(circle at 11% 34%, rgba(255,255,255,.07) 0 1px, transparent 2px),
+    radial-gradient(circle at 67% 72%, rgba(0,0,0,.04)       0 1px, transparent 2px),
+    #304b38;
+  /* Two-line sketch shadow: strong near line + soft ambient */
+  box-shadow:
+    0 2px 0 rgba(20,16,10,.48),
+    0 4px 0 rgba(20,16,10,.1),
+    0 9px 18px rgba(20,16,10,.14);
+}
+
+/* ── HEADER BUTTONS & CONTROLS ───────────────────────────────────────────── */
+body.theme-sketchy .nb,
+body.theme-sketchy .tb,
+body.theme-sketchy .vt,
+body.theme-sketchy .layer-toggle,
+body.theme-sketchy .hdr-date-btn,
+body.theme-sketchy #ls {
+  /* Slightly uneven border width → imperfect pencil line */
+  border-color: rgba(255,255,255,.44);
+  border-width: 1.5px 2px 2px 1.5px;
+  /* Each corner a different radius → organic, not machine-perfect */
+  border-radius: 7px 11px 8px 10px;
+  /* Diagonal pencil-stroke hatch fill + semi-transparent tint */
+  background:
+    repeating-linear-gradient(-52deg, rgba(255,255,255,.06) 0 1px, transparent 1px 5px),
+    rgba(255,255,255,.14);
+  /* Offset pencil shadow + subtle outer double-line + inner highlight */
+  box-shadow:
+    2px 2px 0 rgba(0,0,0,.22),
+    0 0 0 1px rgba(0,0,0,.07),
+    inset 0 1px 0 rgba(255,255,255,.11);
+}
+
+/* Hover: slightly brighter fill, same texture */
+body.theme-sketchy .nb:hover,
+body.theme-sketchy .tb:hover,
+body.theme-sketchy .hdr-date-btn:hover {
+  background:
+    repeating-linear-gradient(-52deg, rgba(255,255,255,.07) 0 1px, transparent 1px 5px),
+    rgba(255,255,255,.26);
+}
+
+/* Handwritten font for all text-bearing controls in the top-bar */
+body.theme-sketchy .tb,
+body.theme-sketchy .vb,
+body.theme-sketchy .hdr-date-btn,
+body.theme-sketchy #ls {
+  font-family: 'Architects Daughter', cursive;
+  font-weight: 400;
+  letter-spacing: .02em;
+}
+
+/* View toggle container: slightly different corner rhythm */
+body.theme-sketchy .vt {
+  border-radius: 8px 12px 9px 11px;
+  overflow: hidden;
+}
+
+/* Inner Week/Day buttons live inside the container — reset individual borders
+   so the container border provides the sketch outline, not each inner button */
+body.theme-sketchy .vt .tb {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  font-family: 'Architects Daughter', cursive;
+  font-weight: 400;
+}
+body.theme-sketchy .vt .tb:hover {
+  background: rgba(255,255,255,.18);
+}
+
+/* Date picker bar: larger element → denser crosshatch + heavier corner shadow */
+body.theme-sketchy .hdr-date-btn {
+  border-width: 1.5px 2px 2.5px 1.5px;
+  border-radius: 9px 12px 8px 11px;
+  background:
+    repeating-linear-gradient(-38deg, rgba(255,255,255,.05) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient( 53deg, rgba(0,0,0,.025)      0 1px, transparent 1px 9px),
+    rgba(255,255,255,.14);
+  box-shadow:
+    2.5px 2.5px 0 rgba(0,0,0,.22),
+    0 0 0 1px rgba(0,0,0,.06),
+    inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+/* Layer-toggle label: handwritten */
+body.theme-sketchy .layer-toggle label {
+  font-family: 'Architects Daughter', cursive;
+}
+
+/* Share/camera button: keep red background, add sketch border & shadow */
+body.theme-sketchy .hdr-share-btn {
+  border-radius: 8px 10px 9px 11px !important;
+  box-shadow:
+    2px 2px 0 rgba(0,0,0,.28),
+    0 0 0 1px rgba(0,0,0,.1),
+    inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+
+body.theme-sketchy #cg,
+body.theme-sketchy .split-wrap > div,
+body.theme-sketchy .phone-day-grid,
+body.theme-sketchy .compact-card {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.72) 0 1px, transparent 2px),
+    repeating-linear-gradient(147deg, rgba(194,146,62,.045) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(54deg, rgba(78,58,34,.025) 0 1px, transparent 1px 13px),
+    #fffaf0;
+  border-color: rgba(50,43,34,.72);
+  border-style: solid;
+  border-radius: 5px 3px 7px 4px;
+  box-shadow:
+    1px 0 0 rgba(50,43,34,.5),
+    -1px 1px 0 rgba(50,43,34,.32),
+    0 8px 20px rgba(71,50,21,.12);
+}
+
+body.theme-sketchy .ch,
+body.theme-sketchy .ch.th,
+body.theme-sketchy .compact-card-hdr {
+  --sk-label-tooth: 46px;
+  --sk-label-pencil: 34px;
+  background:
+    var(--sk-paper-tooth) 7px 3px / var(--sk-label-tooth) var(--sk-label-tooth) repeat,
+    var(--sk-pencil-fill) -6px 5px / var(--sk-label-pencil) var(--sk-label-pencil) repeat,
+    repeating-linear-gradient(37deg, rgba(255,255,255,.16) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(29deg, rgba(63,135,183,.13) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(68deg, rgba(255,255,255,.2) 0 1px, transparent 1px 9px),
+    #cfe9fb;
+  background-blend-mode: screen, screen, normal, normal, normal;
+  color: #223246;
+  border-color: rgba(50,43,34,.7);
+  border-width: 2px 3px 2px 2px;
+  border-radius: 3px 6px 4px 7px;
+}
+
+body.theme-sketchy .ch .dn-short,
+body.theme-sketchy .ch .dn-full,
+body.theme-sketchy .ch .dd,
+body.theme-sketchy .ch .dm,
+body.theme-sketchy .compact-card-hdr .dn-s,
+body.theme-sketchy .compact-card-hdr .dd-s,
+body.theme-sketchy .compact-card-hdr .dm-s {
+  font-family: 'Architects Daughter', cursive;
+  font-weight: 400;
+  letter-spacing: .01em;
+  color: #223246;
+  text-shadow: .35px .35px 0 rgba(255,255,255,.42);
+}
+
+body.theme-sketchy .ch .dd,
+body.theme-sketchy .compact-card-hdr .dd-s {
+  font-size: 3rem;
+  line-height: .9;
+}
+
+body.theme-sketchy .ch .dm,
+body.theme-sketchy .compact-card-hdr .dm-s {
+  font-size: .82rem;
+}
+
+body.theme-sketchy .ch.tc,
+body.theme-sketchy .compact-card-hdr.tc {
+  --sk-label-tooth: 42px;
+  --sk-label-pencil: 31px;
+  background:
+    var(--sk-paper-tooth) -4px 9px / var(--sk-label-tooth) var(--sk-label-tooth) repeat,
+    var(--sk-pencil-fill) 10px -3px / var(--sk-label-pencil) var(--sk-label-pencil) repeat,
+    repeating-linear-gradient(38deg, rgba(255,255,255,.18) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(27deg, rgba(255,213,74,.24) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(63deg, rgba(45,106,79,.12) 0 1px, transparent 1px 10px),
+    #ffeaa6;
+  background-blend-mode: screen, screen, normal, normal, normal;
+}
+
+body.theme-sketchy .ch:nth-child(3n),
+body.theme-sketchy .compact-card-hdr:nth-child(3n) {
+  background-position: 13px -5px, -12px 8px, 0 0, 0 0, 0 0;
+}
+
+body.theme-sketchy .ch:nth-child(4n),
+body.theme-sketchy .compact-card-hdr:nth-child(4n) {
+  background-position: -9px 11px, 15px 4px, 0 0, 0 0, 0 0;
+}
+
+body.theme-sketchy .ch:nth-child(5n),
+body.theme-sketchy .compact-card-hdr:nth-child(5n) {
+  background-position: 4px 15px, 22px -8px, 0 0, 0 0, 0 0;
+}
+
+body.theme-sketchy .tl,
+body.theme-sketchy .ce {
+  border-color: rgba(67,58,45,.56);
+  border-width: 0 2px 1px 0;
+}
+
+body.theme-sketchy .tl {
+  background:
+    repeating-linear-gradient(33deg, rgba(117,89,45,.08) 0 1px, transparent 1px 7px),
+    #f4ecd8;
+  color: rgba(47,43,36,.72);
+}
+
+body.theme-sketchy .ce {
+  background:
+    linear-gradient(91deg, rgba(80,64,42,.035), transparent 45%),
+    linear-gradient(178deg, transparent, rgba(80,64,42,.035));
+}
+
+body.theme-sketchy .ce.sharp,
+body.theme-sketchy .tl.sharp {
+  border-top-color: rgba(47,43,36,.6);
+  border-top-style: dashed;
+}
+
+body.theme-sketchy .allday-row,
+body.theme-sketchy .overflow-strip,
+body.theme-sketchy .compact-day-col {
+  background:
+    repeating-linear-gradient(56deg, rgba(145,103,38,.045) 0 1px, transparent 1px 9px),
+    rgba(255,250,240,.86);
+  border-color: rgba(67,58,45,.45);
+}
+
+body.theme-sketchy .ev,
+body.theme-sketchy .compact-ev,
+body.theme-sketchy .overflow-ev,
+body.theme-sketchy .allday-block {
+  --sk-paper-x: 3px;
+  --sk-paper-y: 2px;
+  --sk-pencil-x: 0px;
+  --sk-pencil-y: 0px;
+  --sk-cross-x: 7px;
+  --sk-cross-y: -4px;
+  --sk-rot: 0deg;
+  --sk-paper-size: 62px;
+  --sk-fill-size: 52px;
+  --sk-cross-size: 36px;
+  --sk-grain-gap: 5px;
+  --sk-wax-opacity: .56;
+  --sk-bg-color: currentColor;
+  --sk-corner-x: 12px;
+  --sk-corner-y: 7px;
+  --sk-border-rot: .3deg;
+  --sk-after-scale: 1;
+  --sk-after-rot: 0deg;
+  overflow: visible;
+  border-left-color: var(--sk-bg-color) !important;
+  border-radius: 2px 3px 2px 3px;
+  border-left-width: 5px !important;
+  box-shadow:
+    1px -1px 0 rgba(35,28,18,.32),
+    -1px 1px 0 rgba(35,28,18,.26),
+    0 1px 0 rgba(35,28,18,.45),
+    2px 2px 0 rgba(35,28,18,.13),
+    inset 0 0 0 1px rgba(255,255,255,.22) !important;
+  clip-path: none;
+}
+
+body.theme-sketchy .compact-ev,
+body.theme-sketchy .overflow-ev,
+body.theme-sketchy .allday-block {
+  position: relative;
+}
+
+body.theme-sketchy .ev::before,
+body.theme-sketchy .compact-ev::before,
+body.theme-sketchy .overflow-ev::before,
+body.theme-sketchy .allday-block::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  pointer-events: none;
+  background:
+    var(--sk-paper-tooth) var(--sk-paper-x) var(--sk-paper-y) / var(--sk-paper-size) var(--sk-paper-size) repeat,
+    var(--sk-pencil-fill) var(--sk-pencil-x) var(--sk-pencil-y) / var(--sk-fill-size) var(--sk-fill-size) repeat,
+    var(--sk-pencil-cross) var(--sk-cross-x) var(--sk-cross-y) / var(--sk-cross-size) var(--sk-cross-size) repeat,
+    repeating-linear-gradient(
+      var(--sk-rot),
+      rgba(255,255,255,.1) 0 1px,
+      transparent 1px var(--sk-grain-gap)
+    );
+  background-blend-mode: screen, screen, screen, normal;
+  mix-blend-mode: screen;
+  opacity: var(--sk-wax-opacity);
+  transform: scale(1.14);
+  clip-path: inset(8px);
+}
+
+body.theme-sketchy .ev::after,
+body.theme-sketchy .compact-ev::after,
+body.theme-sketchy .overflow-ev::after,
+body.theme-sketchy .allday-block::after {
+  content: "";
+  position: absolute;
+  /* Extend beyond .ev so lines overshoot at corners */
+  inset: calc(-1 * var(--sk-corner-y)) calc(-1 * var(--sk-corner-x));
+  pointer-events: none;
+  border: 0;
+  border-radius: 0;
+  z-index: 2;
+  background:
+    /* ── TOP-LEFT corner emphasis (thicker, most prominent) ── */
+    linear-gradient(var(--sk-bg-color), var(--sk-bg-color)) left 0 top var(--sk-corner-y) / var(--sk-corner-x) 2.5px no-repeat,
+    linear-gradient(var(--sk-bg-color), transparent) left var(--sk-corner-x) top 0 / 2.5px var(--sk-corner-y) no-repeat,
+    /* ── Top border — full width overshoots left+right ── */
+    linear-gradient(90deg, var(--sk-bg-color), var(--sk-bg-color)) left 0 top var(--sk-corner-y) / 100% 1.5px no-repeat,
+    linear-gradient(90deg, rgba(255,255,255,.28), rgba(0,0,0,.12)) left 2px top calc(var(--sk-corner-y) + 2px) / calc(100% - 4px) 1px no-repeat,
+    /* ── Bottom border — shorter right extension, less prominent ── */
+    linear-gradient(90deg, transparent, var(--sk-bg-color)) left var(--sk-corner-x) bottom var(--sk-corner-y) / calc(100% - var(--sk-corner-x)) 1px no-repeat,
+    /* ── Left border — full height overshoots top+bottom ── */
+    linear-gradient(180deg, var(--sk-bg-color), var(--sk-bg-color)) left var(--sk-corner-x) top 0 / 1.5px 100% no-repeat,
+    linear-gradient(180deg, rgba(255,255,255,.24), rgba(0,0,0,.12)) left calc(var(--sk-corner-x) + 2px) top 2px / 1px calc(100% - 4px) no-repeat,
+    /* ── Right border — shorter, less prominent ── */
+    linear-gradient(180deg, transparent, var(--sk-bg-color)) right var(--sk-corner-x) top var(--sk-corner-y) / 1px calc(100% - var(--sk-corner-y)) no-repeat;
+  transform: rotate(calc(var(--sk-border-rot, 0deg) + var(--sk-after-rot, 0deg))) scale(var(--sk-after-scale, 1));
+  opacity: .9;
+}
+
+body.theme-sketchy .ev .et,
+body.theme-sketchy .ev .es,
+body.theme-sketchy .compact-ev .et,
+body.theme-sketchy .compact-ev .es,
+body.theme-sketchy .overflow-ev .oe-name,
+body.theme-sketchy .overflow-ev .oe-time,
+body.theme-sketchy .allday-block {
+  position: relative;
+  z-index: 1;
+  color: var(--sk-ink-color, #2f2b24) !important;
+  font-family: 'Architects Daughter', cursive;
+  font-weight: 400;
+  letter-spacing: .01em;
+  text-shadow:
+    .35px .35px 0 rgba(255,255,255,.42),
+    -.2px 0 0 color-mix(in srgb, var(--sk-ink-color, #2f2b24) 55%, transparent);
+}
+
+body.theme-sketchy .ev .et,
+body.theme-sketchy .compact-ev .et,
+body.theme-sketchy .overflow-ev .oe-name,
+body.theme-sketchy .allday-block {
+  font-size: .9rem;
+  line-height: 1.05;
+}
+
+body.theme-sketchy .ev .es,
+body.theme-sketchy .compact-ev .es,
+body.theme-sketchy .overflow-ev .oe-time {
+  font-size: .5rem;
+  line-height: 1.05;
+  opacity: .86;
+}
+
+body.theme-sketchy .ev:nth-child(3n),
+body.theme-sketchy .compact-ev:nth-child(3n),
+body.theme-sketchy .overflow-ev:nth-child(3n),
+body.theme-sketchy .allday-block:nth-child(3n) {
+  --sk-rot: 45deg;
+  border-radius: 3px 2px 3px 2px;
+}
+
+body.theme-sketchy .ev:nth-child(3n)::before,
+body.theme-sketchy .compact-ev:nth-child(3n)::before,
+body.theme-sketchy .overflow-ev:nth-child(3n)::before,
+body.theme-sketchy .allday-block:nth-child(3n)::before {
+  opacity: .8;
+  transform: scale(1.14);
+}
+
+body.theme-sketchy .ev:nth-child(4n),
+body.theme-sketchy .compact-ev:nth-child(4n),
+body.theme-sketchy .overflow-ev:nth-child(4n),
+body.theme-sketchy .allday-block:nth-child(4n) {
+  --sk-rot: 90deg;
+  border-radius: 2px 3px 2px 4px;
+}
+
+body.theme-sketchy .ev:nth-child(4n)::before,
+body.theme-sketchy .compact-ev:nth-child(4n)::before,
+body.theme-sketchy .overflow-ev:nth-child(4n)::before,
+body.theme-sketchy .allday-block:nth-child(4n)::before {
+  opacity: .66;
+  transform: scale(1.16);
+}
+
+body.theme-sketchy .ev:nth-child(5n),
+body.theme-sketchy .compact-ev:nth-child(5n),
+body.theme-sketchy .overflow-ev:nth-child(5n),
+body.theme-sketchy .allday-block:nth-child(5n) {
+  --sk-rot: 0deg;
+  border-radius: 2px 4px 3px 2px;
+}
+
+body.theme-sketchy .ev:nth-child(5n)::before,
+body.theme-sketchy .compact-ev:nth-child(5n)::before,
+body.theme-sketchy .overflow-ev:nth-child(5n)::before,
+body.theme-sketchy .allday-block:nth-child(5n)::before {
+  opacity: .7;
+  transform: scale(1.17);
+}
+
+body.theme-sketchy .ev:hover,
+body.theme-sketchy .allday-block:hover {
+  box-shadow:
+    0 2px 0 rgba(35,28,18,.42),
+    3px 4px 0 rgba(35,28,18,.14),
+    0 5px 16px rgba(54,40,20,.18) !important;
+}
+
+body.theme-sketchy .ev.main-event {
+  background:
+    repeating-linear-gradient(28deg, rgba(80,80,80,.09) 0 2px, transparent 2px 8px),
+    #e8e4d8 !important;
+  color: #4a4438 !important;
+}
+
+
+body.theme-sketchy.share-capture .ev,
+body.theme-sketchy.share-capture .compact-ev,
+body.theme-sketchy.share-capture .overflow-ev,
+body.theme-sketchy.share-capture .allday-block {
+  background:
+    repeating-linear-gradient(27deg, rgba(47,43,36,.12) 0 1px, transparent 1px 8px),
+    rgba(255,250,240,.82) !important;
+  clip-path: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+body.theme-sketchy.share-capture .ev::before,
+body.theme-sketchy.share-capture .ev::after,
+body.theme-sketchy.share-capture .compact-ev::before,
+body.theme-sketchy.share-capture .compact-ev::after,
+body.theme-sketchy.share-capture .overflow-ev::before,
+body.theme-sketchy.share-capture .overflow-ev::after,
+body.theme-sketchy.share-capture .allday-block::before,
+body.theme-sketchy.share-capture .allday-block::after {
+  content: none !important;
+  display: none !important;
+}
+
+body.theme-sketchy.share-capture .ev,
+body.theme-sketchy.share-capture .compact-ev,
+body.theme-sketchy.share-capture .overflow-ev,
+body.theme-sketchy.share-capture .allday-block {
+  outline: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   §  HANDDRAWN BORDER SYSTEM  — inspired by handdrawn.css (F-X Aeberhard)
+   ════════════════════════════════════════════════════════════════════════════
+   Core technique: CSS border-radius slash notation
+     border-radius: TL TR BR BL / TL-v TR-v BR-v BL-v
+   Each corner gets an independent horizontal AND vertical radius. Mixing large
+   values (clamped to element size) with small values creates organic, asymmetric
+   curves that no compass could produce — the key handdrawn.css insight.
+
+   Paired with:
+     • outline + outline-offset → faint second pen-pass stroke
+     • two-step hard box-shadow → drawn-line depth (not Gaussian blur)
+     • active translate        → tactile pressed-button feel
+     • overflow: visible on .ce → ::after corner protrusions reach past cell edge
+   ════════════════════════════════════════════════════════════════════════════ */
+
+body.theme-sketchy {
+  /* ── Organic border-radius presets (slash = h-radii / v-radii per corner)
+        order: top-left  top-right  bottom-right  bottom-left ── */
+  --sk-r-btn:    255px 15px 225px 15px / 15px 225px 15px 255px;   /* toolbar icon buttons */
+  --sk-r-date:   5px 9px 7px 4px / 8px 4px 9px 6px;   /* date picker bar      */
+  --sk-r-vt:     5px 9px 8px 4px / 7px 4px 10px 5px;  /* view-toggle group    */
+  --sk-r-panel:  3px 6px 5px 4px / 5px 3px 7px 4px;   /* calendar panels      */
+  --sk-r-ev:     2px 4px 3px 2px / 3px 2px 4px 3px;   /* event/shift cards    */
+
+  /* ── Two-step sketch shadows: step 1 = the line, step 2 = faint echo ── */
+  --sk-sh-btn:
+    2px 3px 0 rgba(28,20,8,.20),
+    3px 4px 0 rgba(28,20,8,.06);
+  --sk-sh-panel:
+    2px 3px 0 rgba(48,36,16,.24),
+    4px 5px 0 rgba(48,36,16,.07),
+    0 8px 20px rgba(60,42,18,.11);
+  --sk-sh-ev:
+    1px 2px 0 rgba(35,28,18,.30),
+    2px 3px 0 rgba(35,28,18,.09);
+
+  /* ── Second-stroke outlines ── */
+  --sk-ol-hdr: 1px solid rgba(255,255,255,.14);
+  --sk-ol-ev:  1px solid rgba(0,0,0,.06);
+}
+
+/* ─── HEADER: position context + faint hand-drawn second edge ───────────── */
+body.theme-sketchy header {
+  position: relative;
+  overflow: visible;
+}
+
+/* A second faint line below the header — like a pen stroke that ran a
+   fraction further; asymmetric left/right positions to feel imperfect     */
+body.theme-sketchy header::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -3px;
+  bottom: -3px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(22,16,8,.22)  8%,
+    rgba(22,16,8,.28) 40%,
+    rgba(22,16,8,.20) 65%,
+    rgba(22,16,8,.24) 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ─── HEADER BUTTONS: slash border-radius + double-stroke outline ────────── */
+/* outline + outline-offset = a second faint ring slightly offset from the
+   button border, simulating a second pen pass over the drawn box           */
+body.theme-sketchy .nb,
+body.theme-sketchy .tb,
+body.theme-sketchy .layer-toggle,
+body.theme-sketchy #ls {
+  border-radius: var(--sk-r-btn);
+  box-shadow: var(--sk-sh-btn), inset 0 1px 0 rgba(255,255,255,.11);
+  outline: var(--sk-ol-hdr);
+  outline-offset: 2px;
+}
+
+body.theme-sketchy .vt {
+  border-radius: var(--sk-r-vt);
+  box-shadow: var(--sk-sh-btn), inset 0 1px 0 rgba(255,255,255,.08);
+  outline: var(--sk-ol-hdr);
+  outline-offset: 2px;
+}
+
+body.theme-sketchy .hdr-date-btn {
+  border-radius: var(--sk-r-date);
+  box-shadow: var(--sk-sh-btn), inset 0 1px 0 rgba(255,255,255,.12);
+  outline: var(--sk-ol-hdr);
+  outline-offset: 3px;
+}
+
+/* Pressed state: slight translate collapses the shadow offset → button feels
+   physically pushed into the page, like pressing a rubber-stamp            */
+body.theme-sketchy .nb:active,
+body.theme-sketchy .tb:active,
+body.theme-sketchy .hdr-date-btn:active {
+  transform: translate(1px, 1.5px);
+  box-shadow: 1px 1px 0 rgba(28,20,8,.12), inset 0 1.5px 2px rgba(0,0,0,.13);
+  outline-color: rgba(255,255,255,.07);
+}
+
+/* Active tab inside view toggle */
+body.theme-sketchy .vt .tb.active,
+body.theme-sketchy .vt .tb[aria-pressed="true"] {
+  background: rgba(255,255,255,.28);
+  box-shadow:
+    inset 1px 1.5px 0 rgba(0,0,0,.15),
+    inset -1px -1px 0 rgba(255,255,255,.08);
+}
+
+/* ─── CALENDAR PANELS: organic corners + layered sketch shadow ───────────── */
+body.theme-sketchy #cg,
+body.theme-sketchy .split-wrap > div,
+body.theme-sketchy .phone-day-grid,
+body.theme-sketchy .compact-card {
+  border-radius: var(--sk-r-panel);
+  box-shadow: var(--sk-sh-panel);
+}
+
+/* ─── DAY-COLUMN HEADERS: handdrawn.css large-value slash notation ───────── */
+/* Large values (255px, 225px…) get clamped to half the element dimension
+   but on alternating corners, creating the lopsided organic curve that is
+   the signature technique of handdrawn.css                                  */
+body.theme-sketchy .ch,
+body.theme-sketchy .ch.th,
+body.theme-sketchy .compact-card-hdr {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  clip-path: none;  /* remove wobbly polygon — border-radius handles the shape */
+  overflow: hidden;
+}
+/* Per-cell variation: each day header has its own corner personality */
+body.theme-sketchy .ch:nth-child(3n),
+body.theme-sketchy .compact-card-hdr:nth-child(3n) {
+  border-radius: 15px 225px 15px 255px / 225px 15px 255px 15px;
+}
+body.theme-sketchy .ch:nth-child(4n),
+body.theme-sketchy .compact-card-hdr:nth-child(4n) {
+  border-radius: 200px 20px 255px 10px / 10px 255px 20px 200px;
+}
+body.theme-sketchy .ch:nth-child(5n),
+body.theme-sketchy .compact-card-hdr:nth-child(5n) {
+  border-radius: 18px 240px 12px 220px / 240px 18px 220px 12px;
+}
+
+/* ─── FIX: allow .ev::after corner protrusion past calendar cell boundary ── */
+/* .ev::after extends 12px left via inset: calc(-1 * --sk-corner-x).
+   Without overflow: visible the parent .ce clips it and the top-left sketch
+   corner line is hidden for cards positioned at or near the grid left edge. */
+body.theme-sketchy .ce {
+  overflow: visible;
+}
+
+/* ─── EVENT CARDS: organic corners + sketch shadow + faint outer ring ─────── */
+body.theme-sketchy .ev,
+body.theme-sketchy .compact-ev,
+body.theme-sketchy .overflow-ev,
+body.theme-sketchy .allday-block {
+  border-radius: var(--sk-r-ev);
+  box-shadow: var(--sk-sh-ev), inset 0 0 0 1px rgba(255,255,255,.22) !important;
+  outline: var(--sk-ol-ev);
+  outline-offset: 0;
+}
+
+/* Each card gets a slightly different corner rhythm so they feel individually
+   hand-traced rather than stamped by the same tool                         */
+body.theme-sketchy .ev:nth-child(3n),
+body.theme-sketchy .compact-ev:nth-child(3n) {
+  border-radius: 3px 2px 4px 2px / 2px 4px 2px 3px;
+}
+body.theme-sketchy .ev:nth-child(4n),
+body.theme-sketchy .compact-ev:nth-child(4n) {
+  border-radius: 2px 3px 2px 4px / 4px 2px 3px 2px;
+}
+body.theme-sketchy .ev:nth-child(5n),
+body.theme-sketchy .compact-ev:nth-child(5n) {
+  border-radius: 3px 4px 2px 3px / 2px 3px 4px 2px;
+}
+
+body.theme-sketchy .ev:hover,
+body.theme-sketchy .allday-block:hover {
+  box-shadow:
+    0 2px 0 rgba(35,28,18,.40),
+    2px 4px 0 rgba(35,28,18,.12),
+    0 5px 16px rgba(54,40,20,.18) !important;
+  outline-color: rgba(0,0,0,.10);
+}
+
+/* ─── HANDDRAWN NAVIGATION ARROWS ─────────────────────────────────────────────
+   #pB / #nB: full ← → arrows with a slightly wavy shaft + organic arrowhead,
+   drawn as inline SVG so they look hand-traced rather than geometric.
+   Other arrow buttons (tBDrop, dpPrev, dpNext) use CSS border chevrons with
+   slight skew for the same imperfect, hand-drawn quality.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* — #pB / #nB: handdrawn.css icon font arrows ——————————————————————————————— */
+
+body.theme-sketchy #pB > svg,
+body.theme-sketchy #nB > svg {
+  display: none;
+}
+
+body.theme-sketchy #pB,
+body.theme-sketchy #nB {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+body.theme-sketchy #pB::before,
+body.theme-sketchy #nB::before {
+  font-family: "handdrawn-icons";
+  font-size: 1.55rem;
+  line-height: 1;
+  font-style: normal;
+  font-weight: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* icon-arrow-left \E007 */
+body.theme-sketchy #pB::before {
+  content: "\E007";
+}
+
+/* icon-arrow-right \E008 */
+body.theme-sketchy #nB::before {
+  content: "\E008";
+}
+
+/* — tBDrop: CSS border chevron ↓ ——————————————————————————————————————————— */
+
+body.theme-sketchy #tBDrop > svg {
+  display: none;
+}
+
+body.theme-sketchy #tBDrop::before {
+  content: "";
+  display: inline-block;
+  vertical-align: middle;
+  width: 7px;
+  height: 7px;
+  border-right: 2.5px solid currentColor;
+  border-top: 2.5px solid currentColor;
+  border-radius: 0 3px 0 0 / 0 5px 0 0;
+  transform: rotate(135deg) skewX(4deg) skewY(-3deg);
+}
+
+/* — Datepicker prev / next: same handdrawn-icons font as #pB / #nB —————————— */
+
+body.theme-sketchy #dpPrev,
+body.theme-sketchy #dpNext {
+  font-size: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.theme-sketchy #dpPrev::before,
+body.theme-sketchy #dpNext::before {
+  font-family: "handdrawn-icons";
+  font-size: 1.3rem;
+  line-height: 1;
+  font-style: normal;
+  font-weight: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--sk-ink, #2f2b24);
+}
+
+body.theme-sketchy #dpPrev::before { content: "\E007"; }
+body.theme-sketchy #dpNext::before { content: "\E008"; }
+
+/* — Datepicker month label: Architects Daughter to match header ————————————— */
+body.theme-sketchy #dpMonthLabel {
+  font-family: 'Architects Daughter', cursive !important;
+  font-size: .92rem;
+}
+
+/* ─── WEEKSTRIP (phone day-view) ──────────────────────────────────────────────
+   Continues the dark-green header downward; hand-drawn font + organic circles
+   instead of the default clean DM Sans layout.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+body.theme-sketchy.view-day #weekStrip {
+  background: transparent;
+  border-bottom: 1.5px solid rgba(0,0,0,.12);
+  box-shadow: none;
+}
+
+body.theme-sketchy.view-day #weekStrip .ws-dn {
+  font-family: 'Architects Daughter', cursive;
+  font-size: .68rem;
+  font-weight: 400;
+  letter-spacing: .05em;
+  color: rgba(30,24,14,.45);
+}
+
+body.theme-sketchy.view-day #weekStrip .ws-num {
+  font-family: 'Architects Daughter', cursive;
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--gd, #1a3d2b);
+  border-radius: 255px 8px 225px 10px / 8px 225px 10px 255px;
+}
+
+/* Selected day */
+body.theme-sketchy.view-day #weekStrip .ws-sel .ws-num {
+  background: var(--gd, #1a3d2b);
+  color: var(--cr, #f8f5ee);
+  border-radius: 10px 225px 8px 255px / 225px 10px 255px 8px;
+}
+
+/* Today ring */
+body.theme-sketchy.view-day #weekStrip .ws-today:not(.ws-sel) .ws-num {
+  border: 2px solid rgba(30,24,14,.35);
+  border-radius: 8px 255px 12px 225px / 255px 12px 225px 8px;
+}
+
+/* Event dot */
+body.theme-sketchy.view-day #weekStrip .ws-dot.has-ev {
+  width: 5px;
+  height: 5px;
+  background: var(--gm, #2d6a4f);
+  border-radius: 255px 3px 225px 2px / 3px 225px 2px 255px;
+}
+
+/* Hover */
+body.theme-sketchy.view-day #weekStrip .ws-day:hover {
+  background: rgba(0,0,0,.04);
+}
