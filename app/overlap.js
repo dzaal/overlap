@@ -1529,9 +1529,9 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
     const _crewOnly=crewEvs.filter(ev=>ev._cal!=='afspraken');
     const assigned=[
       ..._afspraakEvs.map(ev=>({ev,col:0,total:1,overflow:false})),
-      ...applyWeightedColumns(assignColumns(_crewOnly,3))
+      ...prioritizeMergedColumns(assignColumns(_crewOnly,3))
     ];
-    assigned.forEach(({ev,col,total,_wCol,_wTotal,_wWeight})=>{
+    assigned.forEach(({ev,col,total})=>{
       const sh2=timeHour(ev.start);
       const eh2=eventEndHour(ev,eh);
       const top=(Math.max(sh2,sh)-sh)*CHH;
@@ -1542,8 +1542,10 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
       if(ev._cal==='afspraken'){leftPct=0;rightPct=0;}
       else if(ev._cal==='main'){leftPct=0;rightPct=0;}
       else{
-        const wc=_wCol??col,wt=_wTotal??total,ww=_wWeight??1;
-        leftPct=CLC+wc*(CWC/wt);rightPct=(wt-wc-ww)*(CWC/wt);
+        // Cascade layout: left edge only, shift always extends to right edge (right:0)
+        // Step capped so leftmost shift is at CLC and rightmost never exceeds 50% (min 50% width)
+        const step=total>1?(50-CLC)/(total-1):0;
+        leftPct=CLC+col*step;rightPct=0;
       }
 
       const dv=document.createElement('div');
@@ -1559,10 +1561,8 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
       const baseZ=ev._cal==='afspraken'?'3':String(5+col);
       dv.style.zIndex=baseZ;dv.dataset.baseZ=baseZ;
       if(ev._cal!=='afspraken'){
-        const wc=_wCol??col,wt=_wTotal??total,ww=_wWeight??1;
-        dv.dataset.crewCol=String(wc);
-        dv.dataset.crewTotal=String(wt);
-        dv.dataset.crewWeight=String(ww);
+        dv.dataset.crewCol=String(col);
+        dv.dataset.crewTotal=String(total);
         dv.dataset.hasMain=hasMainToday?'1':'0';
         dv.dataset.hasAfspraak=hasAfspraakToday?'1':'0';
       }
@@ -1671,12 +1671,11 @@ function applyMergedColor(dv,events){
     dv.style.color=contrastTextColor(colors[0]);
   }
 }
-// For overlap groups that contain merged events, redistribute column widths proportionally
-// to the number of merged volunteers (e.g. a 2-person merge is twice as wide as a single slot).
-function applyWeightedColumns(asgn){
+// Swap merged shifts to the lowest column positions within their overlap groups
+// so they start earliest (leftmost) and are widest with the cascade layout.
+function prioritizeMergedColumns(asgn){
   const items=asgn.filter(a=>!a.overflow);
   if(!items.some(a=>a.ev._merged))return asgn;
-  // Union-find connected components by time overlap
   const p=items.map((_,i)=>i);
   const find=x=>p[x]===x?x:(p[x]=find(p[x]));
   const unite=(x,y)=>{p[find(x)]=find(y);};
@@ -1691,10 +1690,11 @@ function applyWeightedColumns(asgn){
   items.forEach((a,i)=>{const r=find(i);if(!comps.has(r))comps.set(r,[]);comps.get(r).push(a);});
   comps.forEach(comp=>{
     if(!comp.some(a=>a.ev._merged))return;
-    comp.sort((a,b)=>a.col-b.col);
-    const tw=comp.reduce((s,a)=>s+(a.ev._merged?a.ev._merged.length:1),0);
-    let off=0;
-    comp.forEach(a=>{const w=a.ev._merged?a.ev._merged.length:1;a._wCol=off;a._wTotal=tw;a._wWeight=w;off+=w;});
+    const sorted=comp.slice().sort((a,b)=>a.col-b.col);
+    const cols=sorted.map(a=>a.col);
+    let ci=0;
+    sorted.filter(a=>a.ev._merged).forEach(a=>{a.col=cols[ci++];});
+    sorted.filter(a=>!a.ev._merged).forEach(a=>{a.col=cols[ci++];});
   });
   return asgn;
 }
@@ -1862,10 +1862,10 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     const _crewOnly=crewEvs.filter(ev=>ev._cal!=='afspraken');
     const crewAssigned=[
       ..._afspraakEvs.map(ev=>({ev,col:0,total:1,overflow:false})),
-      ...applyWeightedColumns(assignColumns(_crewOnly,maxCols))
+      ...prioritizeMergedColumns(assignColumns(_crewOnly,maxCols))
     ];
     const assigned=[...mainEvs.map(ev=>({ev,col:0,total:1,overflow:false})),...crewAssigned];
-    assigned.forEach(({ev,col,total,overflow,_wCol,_wTotal,_wWeight})=>{
+    assigned.forEach(({ev,col,total,overflow})=>{
       if(overflow){
         // Don't place in grid — collect for overflow strip
         overflowByCol[colKey]&&overflowByCol[colKey].push(ev);
@@ -1902,13 +1902,13 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       } else if(ev._cal==='main'){
         leftPct=0; rightPct=0;
       } else {
-        // Reserve left 25% for main events and/or afspraken
-        const CL=(hasMainToday||hasAfspraakToday)?25:0, CW=100-CL;
-        const wc=_wCol??col,wt=_wTotal??total,ww=_wWeight??1;
-        leftPct=CL+wc*(CW/wt); rightPct=(wt-wc-ww)*(CW/wt);
-        dv.dataset.crewCol=String(wc);
-        dv.dataset.crewTotal=String(wt);
-        dv.dataset.crewWeight=String(ww);
+        // Cascade layout: left edge only, shift always extends to right edge (right:0)
+        // Step capped so no shift starts beyond 50% → min 50% width guaranteed
+        const CL=(hasMainToday||hasAfspraakToday)?25:0;
+        const step=total>1?(50-CL)/(total-1):0;
+        leftPct=CL+col*step; rightPct=0;
+        dv.dataset.crewCol=String(col);
+        dv.dataset.crewTotal=String(total);
         dv.dataset.hasMain=hasMainToday?'1':'0';
         dv.dataset.hasAfspraak=hasAfspraakToday?'1':'0';
       }
@@ -2101,9 +2101,10 @@ function _animateCrewPositions(toHidden){
       const cell=el.closest('[data-col]');
       if(cell&&document.querySelector(`[data-col="${cell.dataset.col}"] .ev.afspraak`))return;
     }
-    const cc=parseInt(el.dataset.crewCol,10),ct=parseInt(el.dataset.crewTotal,10),cw=parseInt(el.dataset.crewWeight||'1',10);
-    el.style.left=`${CL+cc*(CW/ct)}%`;
-    el.style.right=`${(ct-cc-cw)*(CW/ct)}%`;
+    const cc=parseInt(el.dataset.crewCol,10),ct=parseInt(el.dataset.crewTotal,10);
+    const step=ct>1?(50-CL)/(ct-1):0;
+    el.style.left=`${CL+cc*step}%`;
+    el.style.right='0%';
   });
 }
 // Merge shifts toggle
@@ -2461,6 +2462,7 @@ document.getElementById('installBtn').addEventListener('click',async()=>{
       window.addEventListener('afterprint',()=>{
         document.body.classList.remove('print-landscape','print-portrait');
         document.documentElement.style.fontSize=_prevFontSize;
+        document.body.style.removeProperty('--hh');
         pageStyle.textContent='';
         window._printMaxCols = null;
         render(0); // restore normal render

@@ -311,6 +311,8 @@ body.main-layer-hidden .allday-block.is-main{display:none!important}
   .ch .schday{font-size:.58rem}
   .tl{font-size:.58rem;padding:1px 3px 0 1px}
   .ev{box-shadow:none!important;animation:none!important;opacity:1!important;border-radius:3px;padding:2px 4px;font-size:.72rem;color:#111!important}
+  body.print-portrait .ev{font-size:.78rem}
+  body.print-portrait .ev .es{font-size:.68rem}
   /* lighten crew shift backgrounds to pastel for print — skip main-event (gray) and afspraken (already pastel) */
   .ev:not(.main-event):not(.afspraak){filter:saturate(0.4) brightness(1.6)!important}
   .ev .et{font-size:1em;font-weight:700;color:#111!important}
@@ -335,10 +337,8 @@ body.print-landscape .ch .dn-full,
 body.print-landscape .compact-card-hdr .dn-s{font-size:.8rem!important}
 body.print-landscape .ch .dm,
 body.print-landscape .compact-card-hdr .dm-s{font-size:.58rem!important}
-/* portrait print: taller rows, bigger text */
+/* portrait print: taller rows */
 body.print-portrait{--hh:52px}
-body.print-portrait .ev{font-size:.78rem}
-body.print-portrait .ev .es{font-size:.68rem}
 body.print-portrait .ch .dd,
 body.print-portrait .compact-card-hdr .dd-s{font-size:1rem!important}
 body.print-portrait .ch .dn-full,
