@@ -84,7 +84,7 @@ $_overlapTs = max(
 <link rel="apple-touch-icon" href="<?= htmlspecialchars($_iconUrl) ?>" id="appleIcon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app/overlap.css?v=28">
+<link rel="stylesheet" href="app/overlap.css?v=<?= (int)filemtime(__DIR__ . '/app/overlap.css') ?>">
 <?php if ($_theme !== 'blockery' && $_theme !== 'softy'): // blockery+softy styles are in overlap.css ?>
 <link rel="stylesheet" href="app/<?= htmlspecialchars($_theme) ?>.css?v=<?= (int)filemtime(__DIR__ . '/app/' . $_theme . '.css') ?>">
 <?php endif; ?>
@@ -187,8 +187,16 @@ $_overlapTs = max(
     </button>
   </div>
 
-  <!-- Install as app (shown by JS when PWA install prompt is available, or on iOS) -->
-  <div id="installSection" style="display:none" class="stp-section">
+
+  <div class="stp-section">
+    <button class="stp-btn" id="stpHoursBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l3-3 3 2 4-6"/></svg>
+      Urenoverzicht
+    </button>
+  </div>
+
+  <!-- Install as app: always visible; native prompt when available, iOS/fallback instructions otherwise -->
+  <div id="installSection" class="stp-section">
     <button class="stp-btn stp-btn-install" id="installBtn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v13M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
       Installeer als app
@@ -320,7 +328,7 @@ if (s.weekStart !== undefined && cfg && cfg.defaults) {
   } catch (e) {}
 })();
 </script>
-<script src="app/overlap.js?v=141"></script>
+<script src="app/overlap.js?v=<?= (int)filemtime(__DIR__ . '/app/overlap.js') ?>"></script>
 <script>
 // ── Disable built-in holiday detection ───────────────────────────────────────
 // overlap.js has hardcoded Dutch public holidays and Amsterdam school vacations.
@@ -604,6 +612,14 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
   // Overlay + close button
   document.getElementById('menuOverlay').addEventListener('click', closePanel);
   document.getElementById('stpClose').addEventListener('click', closePanel);
+
+
+  document.getElementById('stpHoursBtn')?.addEventListener('click', function () {
+    closePanel();
+    if (typeof setViewMode === 'function') setViewMode('hours');
+    else window.vm = 'hours';
+    if (typeof render === 'function') render(0);
+  });
 
   // Close panel (with short delay for share/print to start) when action buttons clicked
   ['shareBtn', 'shareDrop', 'printLandBtn', 'printPortOpt', 'printLandOpt'].forEach(function (id) {

@@ -3,6 +3,7 @@
 // Allowed URLs are read from overlap-config.js (no hard-coded whitelist needed)
 
 $requestedUrl = isset($_GET['url']) ? trim($_GET['url']) : null;
+$forceRefresh = isset($_GET['refresh']) && $_GET['refresh'] === '1';
 
 // Fallback to main config URL if none given
 if (!$requestedUrl) {
@@ -56,7 +57,7 @@ $cacheDir  = sys_get_temp_dir();
 $cacheFile = $cacheDir . '/overlap_ics_' . md5($requestedUrl) . '.txt';
 $cacheTtl  = 60; // 1 minute
 
-if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
+if (!$forceRefresh && file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
     $data = file_get_contents($cacheFile);
 } else {
     $ctx = stream_context_create(['http' => [

@@ -54,6 +54,7 @@ Because all these layers appear together in a single view, the connections becom
 
 - **Multi-calendar overlay** — read multiple ICS feeds and render them as one visual schedule
 - **Week view and day view** — responsive grid that adapts to desktop, tablet and phone
+- **Hours overview** — compact worked-hours report per volunteer, with week/month/year totals and inline drill-downs for payment administration
 - **Day-view week strip** — tap any day chip to navigate; selected day highlighted with a filled circle
 - **Full-screen day view** — day view stretches edge-to-edge for maximum readability
 - **Colour-coded crew** — each volunteer gets a personal colour; shifts are instantly recognisable
@@ -65,10 +66,10 @@ Because all these layers appear together in a single view, the connections becom
 - **Print** — landscape or portrait A4 with a dedicated print stylesheet
 - **Share as image** — export the current view as a shareable PNG
 - **Copy link** — copy the current view URL to the clipboard
-- **PWA** — installable on Android, iOS and desktop; "Install as app" button in the hamburger menu
+- **PWA** — installable on Android, iOS and desktop; "Install as app" button in the hamburger menu, including iPhone/iPad instructions
 - **Auto-update detection** — the app polls for file changes every 10 minutes and on tab focus; when a new version is deployed a pulsing badge appears on the hamburger and a reload prompt inside the drawer
-- **Auto-refresh** — configurable calendar refresh interval (5 / 15 / 30 / 60 min or off) stored per-user in a cookie
-- **Hamburger drawer** — always-visible slide-in menu containing Print, Share, Install, Settings (theme, week start, refresh interval) and version / author info
+- **Auto-refresh** — configurable calendar refresh interval (5 / 15 / 30 / 60 min or off) stored per-user in a cookie; scheduled/manual refreshes force a fresh ICS fetch
+- **Hamburger drawer** — always-visible slide-in menu containing Hours overview, Print, Share, Install, Settings (theme, week start, refresh interval) and version / author info
 - **Theme system** — three built-in themes; add your own by dropping a CSS file in `app/`
 - **Spring-curve event animations** — crew shifts pop in with an overshoot spring animation
 - **No database** — the entire configuration lives in a single JavaScript file (`overlap-config.js`)
@@ -118,7 +119,7 @@ overlap/
 │   ├── nova.css                # Nova dark theme — full standalone overrides
 │   ├── overlap-config.js       # Live config (generated; do not edit by hand)
 │   ├── overlap-manifest.json   # PWA manifest (auto-generated from branding)
-│   ├── proxy.php               # Server-side ICS proxy and cache (15 min)
+│   ├── proxy.php               # Server-side ICS proxy and short cache
 │   ├── icon-192.png            # PWA icon — overwritten on logo upload
 │   └── icon-512.png            # PWA icon — overwritten on logo upload
 ├── manage/
@@ -173,7 +174,8 @@ overlap/
 ### Proxy
 
 All ICS feeds are fetched server-side through `app/proxy.php`, which:
-- Caches responses for 15 minutes
+- Caches responses briefly (60 seconds)
+- Supports `refresh=1` for explicit/manual refreshes that bypass the local proxy cache
 - Only allows URLs listed in the configuration (no open proxy)
 
 ---
@@ -235,6 +237,21 @@ You can also **import an `.ics` file** (e.g. a national holiday calendar or scho
 - **Automatically collapses consecutive same-named events into a single range** (e.g. 9 individual "Summer vacation" days become one row)
 - Strips common category prefixes (`Schoolvakantie:`, `Nationale feestdag:` etc.) from event titles
 
+
+## Hours overview
+
+The hamburger menu contains **Urenoverzicht**. It shows only volunteers with worked hours and ignores future planning, so year totals reflect hours actually worked so far.
+
+Counting rules:
+- Shift titles can contain multiple names, e.g. `Zdeno/Dirk`; each listed volunteer receives the full shift duration.
+- `name1` is treated as an alias for `name`; numbered real names such as `Dirk2` remain separate volunteers.
+- Question marks and stray quote/backtick characters are ignored for name matching, e.g. `Zdeno?` and `` `zdeno`` match `Zdeno`.
+- Titles containing `afwezig`, `vakantie` or `niet` are excluded from paid-hour totals.
+- Future events are not counted; a currently running shift is counted only up to the current time.
+
+Clicking a `per week`, `per maand` or `per jaar` total opens the breakdown inline below that volunteer. Year opens months, month opens weeks, week opens days, and a day opens the underlying shift rows.
+
+
 ---
 
 ## In-app settings (hamburger menu)
@@ -244,7 +261,8 @@ Clicking the hamburger icon opens a slide-in drawer available on all screen size
 | Section | Options |
 |---|---|
 | Update notice | Shown when a new version is detected; click to reload |
-| Install | Install as PWA (shown when browser supports it) |
+| Urenoverzicht | Worked-hours report per volunteer, per week/month/year, with inline details |
+| Install | Install as PWA; on iPhone/iPad the button shows Safari Add to Home Screen instructions |
 | Afdrukken | Landscape or portrait print |
 | Delen | Share as image / copy link |
 | Instellingen | Theme, week start day |
@@ -260,7 +278,7 @@ Theme and week-start changes trigger a page reload to apply. The refresh interva
 The app ships with a web manifest so it can be installed:
 
 - **Android**: tap the browser menu → "Add to Home Screen" or use the "Installeer als app" button in the hamburger menu
-- **iOS**: tap Share → "Add to Home Screen"
+- **iOS**: open the hamburger menu, tap "Installeer als app", then use Safari Share → "Add to Home Screen"
 - **Desktop Chrome/Edge**: install button in the address bar or hamburger menu
 
 The PWA icons (`icon-192.png` and `icon-512.png`) are automatically generated from the logo you upload in the Display settings — centre-cropped to square and resampled to the correct size.
