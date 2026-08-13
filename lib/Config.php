@@ -152,6 +152,9 @@ class Config
             if (!empty($m['bday'])) {
                 $line .= ", bday: " . self::jsVal($m['bday']);
             }
+            if (!empty($m['aliases']) && is_array($m['aliases'])) {
+                $line .= ", aliases: " . self::jsVal($m['aliases']);
+            }
             $line .= '}';
             $out  .= "    $line,\n";
         }
@@ -201,6 +204,7 @@ class Config
         if (is_bool($v))   return $v ? 'true' : 'false';
         if (is_null($v))   return 'null';
         if (is_int($v) || is_float($v)) return (string)$v;
+        if (is_array($v)) return '[' . implode(', ', array_map([self::class, 'jsVal'], $v)) . ']';
         return "'" . str_replace(["\\", "'"], ["\\\\", "\\'"], (string)$v) . "'";
     }
 

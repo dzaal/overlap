@@ -34,7 +34,7 @@ function showShareToast(msg){
 function hasGoogleConfig(){ return !!(CONFIG.defaults.googleClientId && CONFIG.defaults.googleApiKey && CONFIG.defaults.googleCalendarId); }
 let googleClientLoaded = false;
 let googleSignedIn = false;
-function crewColor(name){ const user = CONFIG.crew.find(c=>c.name.toLowerCase()===name.toLowerCase()); return user?.color || PALETTES[nameHash(name)][0] || '#dbeeff'; }
+function crewColor(name){ const user=crewForName(name); return user?.color || PALETTES[nameHash(name)][0] || '#dbeeff'; }
 function localShiftToEvent(shift){ const start = new Date(shift.start); const end = new Date(shift.end); return { title: shift.title, desc: shift.desc||'', location: shift.location||'', start, end, uid: shift.id || `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, _cal:'custom', localId: shift.id } }
 function mergeLocalShifts(evList){ 
   const localEvs = localShifts.filter(s=>s.active!==false).map(localShiftToEvent).filter(ev => !shouldFilterEvent(ev));
@@ -815,12 +815,20 @@ function normalizeCrewToken(name){
 
 function crewAliasMap(){
   const map=new Map();
-  (CONFIG.crew||[]).forEach(c=>map.set(normalizeCrewToken(c.name),c.name));
+  (CONFIG.crew||[]).forEach(c=>{
+    map.set(normalizeCrewToken(c.name),c.name);
+    (c.aliases||[]).forEach(alias=>map.set(normalizeCrewToken(alias),c.name));
+  });
   (CONFIG.crew||[]).forEach(c=>{
     const key=normalizeCrewToken(c.name);
     if(!map.has(key+'1'))map.set(key+'1',c.name);
   });
   return map;
+}
+
+function crewForName(name){
+  const canonical=crewAliasMap().get(normalizeCrewToken(name));
+  return (CONFIG.crew||[]).find(c=>c.name===canonical);
 }
 
 function nameHasQuestionMark(name){
@@ -928,7 +936,7 @@ function applyColor(dv, title){
     dv.classList.add('question-shift');
   }
 
-  const crewItem = CONFIG.crew.find(c=>c.name.toLowerCase()===displayName.toLowerCase());
+  const crewItem = crewForName(displayName);
   if(crewItem){
     const baseColor = crewItem.color;
     const contrast = contrastTextColor(baseColor);

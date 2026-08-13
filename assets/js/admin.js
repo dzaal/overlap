@@ -72,7 +72,7 @@ function renderDiagnostics(el, d) {
 
 let crewRowIndex = 0;
 
-function addCrewRow(name = '', color = '#52b788', bday = '') {
+function addCrewRow(name = '', color = '#52b788', bday = '', aliases = '') {
   const tbody = document.getElementById('crewTbody');
   if (!tbody) return;
 
@@ -91,6 +91,7 @@ function addCrewRow(name = '', color = '#52b788', bday = '') {
       </div>
     </td>
     <td><input type="text"  name="crew[${idx}][bday]"  value="${esc(bday)}"  placeholder="DD-MM" maxlength="5" style="width:80px"></td>
+    <td><input type="text" name="crew[${idx}][aliases]" value="${esc(aliases)}" placeholder="Aliases (name1 | name2)" style="width:100%"></td>
     <td>
       <button type="button" class="btn btn-ghost btn-sm btn-icon" onclick="moveRow(this,-1)" title="Omhoog">↑</button>
       <button type="button" class="btn btn-ghost btn-sm btn-icon" onclick="moveRow(this,1)"  title="Omlaag">↓</button>

@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'save
             $name  = trim($row['name']  ?? '');
             $color = trim($row['color'] ?? '#999999');
             $bday  = trim($row['bday']  ?? '');
+            $aliases = array_values(array_unique(array_filter(array_map('trim', explode('|', $row['aliases'] ?? '')))));
 
             if ($name === '') continue; // skip blank rows
 
@@ -40,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'save
 
             $entry = ['name' => $name, 'color' => $color];
             if ($bday) $entry['bday'] = $bday;
+            if ($aliases) $entry['aliases'] = $aliases;
             $crew[] = $entry;
         }
 
@@ -95,6 +97,7 @@ include '_header.php';
           <col style="width:auto">
           <col style="width:160px">
           <col style="width:90px">
+          <col style="width:220px">
           <col style="width:70px">
           <col style="width:50px">
         </colgroup>
@@ -103,6 +106,7 @@ include '_header.php';
             <th>Name</th>
             <th>Color</th>
             <th>Birthday</th>
+            <th>Aliases (separate with |)</th>
             <th>Order</th>
             <th></th>
           </tr>
@@ -128,5 +132,5 @@ include '_header.php';
 <script>
 // Pre-populate crew rows from PHP data
 const crewData = <?= json_encode(array_values($crew), JSON_UNESCAPED_UNICODE) ?>;
-crewData.forEach(m => addCrewRow(m.name, m.color, m.bday || ''));
+crewData.forEach(m => addCrewRow(m.name, m.color, m.bday || '', (m.aliases || []).join(' | ')));
 </script>
