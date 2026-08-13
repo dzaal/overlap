@@ -1034,6 +1034,12 @@ function rangeForHours(period, anchorDate){
 function fmtDate(d){return `${DL[d.getDay()]} ${d.getDate()} ${MN[d.getMonth()]} ${d.getFullYear()}`}
 function fmtTime(d){return `${p2(d.getHours())}:${p2(d.getMinutes())}`}
 function fmtHours(h){return (Math.round(h*100)/100).toLocaleString(_locale,{minimumFractionDigits:h%1?1:0,maximumFractionDigits:2})}
+function hoursWeekDateLabel(anchorDate){
+  const start=sowk(anchorDate), end=addD(start,6);
+  const sameMonth=start.getMonth()===end.getMonth()&&start.getFullYear()===end.getFullYear();
+  const startLabel=sameMonth?String(start.getDate()):`${start.getDate()} ${MN[start.getMonth()]}`;
+  return `${startLabel}-${end.getDate()} ${MN[end.getMonth()]} ${end.getFullYear()}`;
+}
 function hoursPeriodLabel(period, anchorDate){
   const {start,end}=rangeForHours(period,anchorDate);
   if(period==='week'){
@@ -1066,8 +1072,7 @@ function crewNamesForEvent(ev){
   return names;
 }
 function expandedShiftEntries(rangeStart, rangeEnd){
-  const now=new Date();
-  const effectiveEnd=new Date(Math.min(rangeEnd.getTime(),now.getTime()));
+  const effectiveEnd=new Date(rangeEnd);
   if(effectiveEnd<=rangeStart)return [];
   const expanded=[];
   const inclusiveEnd=new Date(effectiveEnd.getTime()-1);
@@ -1091,6 +1096,7 @@ function totalHoursForCrew(crew, start, end){
     .reduce((sum,e)=>sum+e.hours,0);
 }
 function hoursDataFor(anchorDate){
+  const todayStart=new Date();todayStart.setHours(0,0,0,0);
   const periods=['week','month','year'];
   const entriesByPeriod={};
   periods.forEach(period=>{
@@ -1104,8 +1110,9 @@ function hoursDataFor(anchorDate){
         .filter(e=>e.crew.toLowerCase()===c.name.toLowerCase())
         .reduce((sum,e)=>sum+e.hours,0);
     });
-    return {...c,totals};
-  }).filter(c=>c.totals.year>0||c.totals.month>0||c.totals.week>0);
+    const plannedFromToday=entriesByPeriod.week.some(e=>e.crew.toLowerCase()===c.name.toLowerCase()&&e.end>todayStart);
+    return {...c,totals,plannedFromToday};
+  }).filter(c=>c.totals.week>0);
 }
 function hourBreakdownItems(period, anchorDate){
   if(period==='year'){
@@ -1137,7 +1144,7 @@ function renderHoursShiftList(detail, crew, start, end, label){
   const total=rows.reduce((sum,e)=>sum+e.hours,0);
   if(!detail)return;
   const body=rows.length
-    ? rows.map(e=>`<tr><td>${esc(fmtDate(e.start))}</td><td>${fmtTime(e.start)}-${fmtTime(e.end)}</td><td>${esc(e.title)}</td><td>${fmtHours(e.hours)}</td></tr>`).join('')
+    ? rows.map(e=>{const todayStart=new Date();todayStart.setHours(0,0,0,0);return `<tr class="${e.end>todayStart?'hours-planned-row':''}"><td>${esc(fmtDate(e.start))}</td><td>${fmtTime(e.start)}-${fmtTime(e.end)}</td><td>${esc(e.title)}</td><td>${fmtHours(e.hours)}</td></tr>`}).join('')
     : `<tr><td colspan="4" class="hours-empty">Geen diensten in deze periode.</td></tr>`;
   detail.innerHTML=`<div class="hours-detail-head"><h3>${esc(crew)} - ${esc(label)}</h3><button class="hours-close" type="button" title="Sluit">×</button></div>
     <table class="hours-table"><thead><tr><th>Datum</th><th>Tijd</th><th>Dienst</th><th>Uren</th></tr></thead><tbody>${body}</tbody><tfoot><tr><td colspan="3">Totaal</td><td>${fmtHours(total)}</td></tr></tfoot></table>`;
@@ -1146,12 +1153,13 @@ function renderHoursShiftList(detail, crew, start, end, label){
 }
 function renderHoursBreakdown(detail, crew, period, anchorDate){
   if(!detail)return;
-  const items=hourBreakdownItems(period, anchorDate).map(item=>({...item,hours:totalHoursForCrew(crew,item.start,item.end)}));
+  const todayStart=new Date();todayStart.setHours(0,0,0,0);
+  const items=hourBreakdownItems(period, anchorDate).map(item=>({...item,hours:totalHoursForCrew(crew,item.start,item.end),plannedFromToday:item.end>todayStart}));
   const total=items.reduce((sum,item)=>sum+item.hours,0);
   const title=period==='year'?'Maanden':period==='month'?'Weken':'Dagen';
   detail.innerHTML=`<div class="hours-detail-head"><h3>${esc(crew)} - ${title} - ${esc(hoursPeriodLabel(period,anchorDate))}</h3><button class="hours-close" type="button" title="Sluit">×</button></div>
     <table class="hours-table"><thead><tr><th>Periode</th><th>Uren</th></tr></thead><tbody>
-    ${items.map((item,idx)=>`<tr class="${item.hours?'':'hours-zero'}"><td><button class="hours-period" type="button" data-hours-break="${idx}"><span>${esc(item.label)}</span><span>${item.next==='day'?'Details':'Open'}</span></button></td><td>${fmtHours(item.hours)}</td></tr>`).join('')}
+    ${items.map((item,idx)=>`<tr class="${item.hours?'':'hours-zero'}${item.hours&&item.plannedFromToday?' hours-planned-row':''}"><td><button class="hours-period" type="button" data-hours-break="${idx}"><span>${esc(item.label)}</span><span>${item.next==='day'?'Details':'Open'}</span></button></td><td>${fmtHours(item.hours)}</td></tr>`).join('')}
     </tbody><tfoot><tr><td>Totaal</td><td>${fmtHours(total)}</td></tr></tfoot></table>`;
   detail.querySelector('.hours-close')?.addEventListener('click',()=>{detail.innerHTML='';});
   detail.querySelectorAll('[data-hours-break]').forEach(btn=>{
@@ -1163,18 +1171,26 @@ function renderHoursBreakdown(detail, crew, period, anchorDate){
   });
   detail.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
-function renderHoursView(container, anchorDate){
+function renderHoursView(container, anchorDate, deferAnimation=false){
   const rows=hoursDataFor(anchorDate);
-  const periodLabels={week:'per week',month:'per maand',year:'per jaar'};
-  container.innerHTML=`<div class="hours-report"><div class="hours-summary">
-    ${rows.length?rows.map(c=>{
+  const periodLabels={week:'uren deze week',month:'uren deze maand',year:'per jaar'};
+  const allTotals={week:rows.reduce((sum,c)=>sum+c.totals.week,0)};
+  container.innerHTML=`<div class="hours-report${deferAnimation?' hours-anim-pending':''}"><div class="hours-context"><span class="hours-context-label">${esc(new Intl.DateTimeFormat(_locale,{month:'long',year:'numeric'}).format(anchorDate))}</span><span class="hours-week-nav"><button class="hours-week-arrow" type="button" data-hours-week-nav="-1" title="Vorige week">‹</button><span class="hours-week-label">week ${getWeekNumber(sowk(anchorDate))}</span><button class="hours-week-arrow" type="button" data-hours-week-nav="1" title="Volgende week">›</button></span><span class="hours-date-range">${esc(hoursWeekDateLabel(anchorDate))}</span><span class="hours-all-totals"><span>totaal deze week: <b>${fmtHours(allTotals.week)}</b> uren</span></span></div><div class="hours-summary">
+    ${rows.length?rows.map((c,idx)=>{
       const color=c.color||crewColor(c.name);
       const totalButtons=['week','month','year'].map(period=>`<button class="hours-total" type="button" data-hours-crew="${esc(c.name)}" data-hours-period="${period}">
         <b>${fmtHours(c.totals[period])}</b><span>${periodLabels[period]}</span>
       </button>`).join('');
-      return `<section class="hours-person"><div class="hours-person-head"><span class="hours-swatch" style="background:${color}"></span><span class="hours-name">${esc(c.name)}</span></div><div class="hours-totals">${totalButtons}</div><div class="hours-inline-detail hours-detail"></div></section>`;
-    }).join(''):`<div class="hours-empty">Geen uren gevonden in ${esc(hoursPeriodLabel('year',anchorDate))}.</div>`}
+      return `<section class="hours-person${c.plannedFromToday?' hours-person-planned':''}" style="animation-delay:${idx*5}ms"><div class="hours-person-head"><span class="hours-swatch" style="background:${color}"></span><span class="hours-name">${esc(c.name)}</span></div><div class="hours-totals">${totalButtons}</div><div class="hours-inline-detail hours-detail"></div></section>`;
+    }).join(''):`<div class="hours-empty">Geen uren gevonden in ${esc(hoursPeriodLabel('week',anchorDate))}.</div>`}
     </div></div>`;
+  container.querySelectorAll('[data-hours-week-nav]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      hoursFocusPeriod='week';
+      anc=addD(sowk(anc), +btn.dataset.hoursWeekNav*7);
+      render(0);
+    });
+  });
   container.querySelectorAll('[data-hours-crew]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       hoursFocusPeriod=btn.dataset.hoursPeriod||'month';
@@ -1186,11 +1202,18 @@ function renderHoursView(container, anchorDate){
   });
 }
 
-function renderInto(container, anchorDate){
+function startHoursAnimation(container){
+  const report=container?.querySelector('.hours-anim-pending');
+  if(!report)return;
+  report.offsetHeight;
+  requestAnimationFrame(()=>report.classList.remove('hours-anim-pending'));
+}
+
+function renderInto(container, anchorDate, options={}){
   if(vm==='hours'){
     window._dayMaxCols=1;
     updateDayViewMetrics(0);
-    renderHoursView(container, anchorDate);
+    renderHoursView(container, anchorDate, !!options.deferHoursAnimation);
     return;
   }
   const colDefs=getColDefs(anchorDate);
@@ -1297,7 +1320,8 @@ function render(dir=0){
 
   if(dir===0 || !inner){
     // Initial load — no animation
-    renderInto(panCur, anc);
+    renderInto(panCur, anc, {deferHoursAnimation:vm==='hours'});
+    startHoursAnimation(panCur);
     inner.style.transition='none';
     inner.style.transform='translateX(-100%)';
     updateLabel();
@@ -1307,14 +1331,14 @@ function render(dir=0){
 
   // Pre-render adjacent panel
   if(dir>0){
-    renderInto(panNext, anc);
+    renderInto(panNext, anc, {deferHoursAnimation:vm==='hours'});
     inner.style.transition='none';
     inner.style.transform='translateX(-100%)'; // show current
     panNext.offsetHeight; // force reflow
     inner.style.transition='transform .28s cubic-bezier(.4,0,.2,1)';
     inner.style.transform='translateX(-200%)'; // slide to next
   } else {
-    renderInto(panPrev, anc);
+    renderInto(panPrev, anc, {deferHoursAnimation:vm==='hours'});
     inner.style.transition='none';
     inner.style.transform='translateX(-100%)';
     panPrev.offsetHeight;
@@ -1331,13 +1355,14 @@ function render(dir=0){
 
     // Re-render the center panel after the slide so copied markup does not lose
     // its event listeners (day-label zoom, event selection, tooltips).
-    renderInto(panCur, anc);
+    renderInto(panCur, anc, {deferHoursAnimation:vm==='hours'});
     panPrev.innerHTML='';
     panNext.innerHTML='';
     inner.style.transition='none';
     inner.style.transform='translateX(-100%)';
     updateLabel();
     updateWeekStrip();
+    startHoursAnimation(panCur);
   };
 
   inner.addEventListener('transitionend', completeTransition, {once:true});
