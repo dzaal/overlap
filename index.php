@@ -7,7 +7,10 @@ if (isset($_GET['overlap_upd'])) {
         filemtime(__FILE__),
         is_file(__DIR__.'/app/overlap.js')  ? filemtime(__DIR__.'/app/overlap.js')  : 0,
         is_file(__DIR__.'/app/overlap.css') ? filemtime(__DIR__.'/app/overlap.css') : 0,
-        is_file(__DIR__.'/app/sketchy.css') ? filemtime(__DIR__.'/app/sketchy.css') : 0
+        is_file(__DIR__.'/app/sketchy.css') ? filemtime(__DIR__.'/app/sketchy.css') : 0,
+        is_file(__DIR__.'/app/nova.css') ? filemtime(__DIR__.'/app/nova.css') : 0,
+        is_file(__DIR__.'/app/mono.css') ? filemtime(__DIR__.'/app/mono.css') : 0,
+        is_file(__DIR__.'/app/weather-icons.css') ? filemtime(__DIR__.'/app/weather-icons.css') : 0
     );
     echo json_encode(['ts' => $ts]);
     exit;
@@ -64,7 +67,10 @@ $_overlapTs = max(
     filemtime(__FILE__),
     is_file(__DIR__.'/app/overlap.js')  ? filemtime(__DIR__.'/app/overlap.js')  : 0,
     is_file(__DIR__.'/app/overlap.css') ? filemtime(__DIR__.'/app/overlap.css') : 0,
-    is_file(__DIR__.'/app/sketchy.css') ? filemtime(__DIR__.'/app/sketchy.css') : 0
+    is_file(__DIR__.'/app/sketchy.css') ? filemtime(__DIR__.'/app/sketchy.css') : 0,
+    is_file(__DIR__.'/app/nova.css') ? filemtime(__DIR__.'/app/nova.css') : 0,
+    is_file(__DIR__.'/app/mono.css') ? filemtime(__DIR__.'/app/mono.css') : 0,
+    is_file(__DIR__.'/app/weather-icons.css') ? filemtime(__DIR__.'/app/weather-icons.css') : 0
 );
 ?><!DOCTYPE html>
 <html lang="nl">
@@ -85,6 +91,7 @@ $_overlapTs = max(
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app/overlap.css?v=<?= (int)filemtime(__DIR__ . '/app/overlap.css') ?>">
+<link rel="stylesheet" href="app/weather-icons.css?v=<?= (int)filemtime(__DIR__ . '/app/weather-icons.css') ?>">
 <?php if ($_theme !== 'blockery' && $_theme !== 'softy'): // blockery+softy styles are in overlap.css ?>
 <link rel="stylesheet" href="app/<?= htmlspecialchars($_theme) ?>.css?v=<?= (int)filemtime(__DIR__ . '/app/' . $_theme . '.css') ?>">
 <?php endif; ?>
@@ -232,6 +239,7 @@ $_overlapTs = max(
         <option value="softy">Softy</option>
         <option value="nova">Nova</option>
         <option value="sketchy">Sketchy</option>
+        <option value="mono">Mono</option>
       </select>
     </label>
     <label class="stp-field">
@@ -253,6 +261,14 @@ $_overlapTs = max(
         <option value="60">1 uur</option>
         <option value="0">Uit</option>
       </select>
+    </label>
+    <label class="stp-field stp-check-field">
+      <span>Weericoon</span>
+      <input type="checkbox" id="stpWeatherIconToggle" checked>
+    </label>
+    <label class="stp-field stp-check-field">
+      <span>Temperatuur</span>
+      <input type="checkbox" id="stpTemperatureToggle" checked>
     </label>
     <label class="stp-field">
       <span>Week start</span>
@@ -321,6 +337,8 @@ $_overlapTs = max(
     if (s.theme) {
       document.body.className = document.body.className.replace(/\btheme-\w+\b/, 'theme-' + s.theme);
     }
+    if (s.weatherIconVisible === false || s.weatherVisible === false) document.body.classList.add('weather-icon-hidden');
+    if (s.temperatureVisible === false) document.body.classList.add('temperature-hidden');
 if (s.weekStart !== undefined && cfg && cfg.defaults) {
       cfg.defaults.weekStartDay = +s.weekStart;
     }
@@ -583,10 +601,14 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
     var animSel = document.getElementById('stpAnimSelect');
     var refreshSel = document.getElementById('stpRefreshSelect');
     var weekSel = document.getElementById('stpWeekSelect');
+    var weatherIconToggle = document.getElementById('stpWeatherIconToggle');
+    var temperatureToggle = document.getElementById('stpTemperatureToggle');
     if (themeSel) themeSel.value = currentTheme();
     if (animSel) animSel.value = String(typeof window._getEventAnimationStyle === 'function' ? window._getEventAnimationStyle() : +(localStorage.getItem('evAnimIdx') || 0));
     if (refreshSel) refreshSel.value = String(currentRefreshMin());
     if (weekSel) weekSel.value = String(currentWeekStart());
+    if (weatherIconToggle) weatherIconToggle.checked = !document.body.classList.contains('weather-icon-hidden');
+    if (temperatureToggle) temperatureToggle.checked = !document.body.classList.contains('temperature-hidden');
   }
 
   function openPanel() {
@@ -648,6 +670,21 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
     if (typeof window._setRefreshInterval === 'function') window._setRefreshInterval(min);
   });
 
+  document.getElementById('stpWeatherIconToggle')?.addEventListener('change', function () {
+    var s = readCookie();
+    delete s.weatherVisible;
+    s.weatherIconVisible = this.checked;
+    writeCookie(s);
+    document.body.classList.toggle('weather-icon-hidden', !this.checked);
+  });
+
+  document.getElementById('stpTemperatureToggle')?.addEventListener('change', function () {
+    var s = readCookie();
+    s.temperatureVisible = this.checked;
+    writeCookie(s);
+    document.body.classList.toggle('temperature-hidden', !this.checked);
+  });
+
   document.getElementById('stpAnimSelect')?.addEventListener('change', function () {
     var idx = +this.value;
     localStorage.setItem('evAnimIdx', idx);
@@ -660,6 +697,9 @@ if (typeof getAmsterdamSchoolHolidays === 'function') getAmsterdamSchoolHolidays
   document.getElementById('stpReset').addEventListener('click', function () {
     var s = readCookie();
     delete s.theme;
+    delete s.weatherVisible;
+    delete s.weatherIconVisible;
+    delete s.temperatureVisible;
     s.weekStart = 1; // Monday
     delete s.refreshMin;
     writeCookie(s);
@@ -915,6 +955,13 @@ body.menu-open #settingsPanel { transform: translateX(0); }
 .stp-field:last-child { margin-bottom: 0; }
 .stp-field span {
   font-weight: 600;
+}
+.stp-check-field input{
+  width:18px;
+  height:18px;
+  margin:0;
+  accent-color:var(--gm,#2d6a4f);
+  cursor:pointer;
 }
 .stp-field select {
   width: 100%;

@@ -115,6 +115,41 @@ body.view-day .ce.sharp{border-top-width:2px}
 .ch .dm{font-size:.72rem;opacity:.75;display:block}
 /* day name + date on ONE LINE */
 .ch .dayline{display:flex;align-items:baseline;justify-content:center;gap:2px;white-space:nowrap}
+.weather-float{position:absolute;top:2px;right:3px;z-index:25;display:inline-flex;align-items:center;gap:2px;padding:1px 4px;border:1px solid rgba(41,70,91,.18);border-radius:8px;background:rgba(255,255,255,.82);color:#29465b;font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:900;line-height:1.25;white-space:nowrap;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.weather-symbol{display:inline-block;font-size:1.5em;line-height:1}
+.weather-icon-hidden .weather-symbol{display:none!important}
+.temperature-hidden .weather-temp{display:none!important}
+.weather-icon-hidden.temperature-hidden .weather-float{display:none!important}
+.weather-float-compact{right:2px;top:auto}
+body.view-week .weather-float{
+  display:grid;
+  place-items:center;
+  gap:0;
+  min-width:0!important;
+  min-height:0!important;
+  padding:0 2px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.view-week .weather-temp{grid-area:1/1;z-index:2;line-height:1;color:#fff;font-size:.68rem;font-weight:900;text-shadow:0 1px 2px #000,0 0 3px #000}
+body.view-week .weather-symbol{grid-area:1/1;z-index:1;font-size:2.4rem!important}
+body.view-week.theme-nova .weather-symbol svg{width:1em;height:1em}
+body.view-day.theme-blockery .weather-float,body.view-day.theme-softy .weather-float{display:grid;place-items:center}
+body.view-day.theme-blockery .weather-temp,body.view-day.theme-softy .weather-temp{grid-area:1/1;z-index:2;line-height:1;color:#111;font-size:.72rem;font-weight:900;text-shadow:0 1px 2px rgba(255,255,255,.95),0 0 3px #fff}
+body.view-day.theme-blockery .weather-symbol,body.view-day.theme-softy .weather-symbol{grid-area:1/1;z-index:1;font-size:2.4rem!important}
+body.view-day.theme-softy .weather-temp{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border-radius:50%;background:#2563eb;color:#fff;font-size:calc(.54rem + 2px);font-weight:400;line-height:1;text-shadow:none;box-shadow:0 1px 3px rgba(30,64,175,.35);transform:translateY(-1px)}
+body.view-day.theme-softy .weather-symbol{color:#2563eb;font-size:3rem!important}
+body.view-day.theme-blockery .weather-symbol{font-size:3.36rem!important}
+body.view-day.theme-blockery .weather-temp{position:static;grid-area:auto;color:#111!important}
+body.view-day.theme-blockery .weather-symbol{grid-area:auto}
+body.view-day.theme-blockery .weather-float{display:inline-flex;flex-direction:column;gap:1px;padding:0;border:0;background:transparent;box-shadow:none}
+body.view-day.theme-blockery .weather-symbol svg{display:block;width:1em;height:1em;fill:none;stroke:#111;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body.view-week.theme-blockery .weather-symbol{color:#2563eb;font-size:1.5rem!important}
+body.view-week.theme-blockery .weather-temp{display:none}
+body.view-week.theme-blockery .weather-symbol svg{display:block;width:1em;height:1em;fill:none;stroke:#111;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body.theme-blockery .weather-float{padding:1px 5px;border:2px solid #111;border-radius:2px;background:#fff3a6;color:#111;box-shadow:2px 2px 0 #111;letter-spacing:.01em}
 .ch.tc{background:#b8daff;color:#0a2a4a}
 .ch.th{background:#dbeeff;color:#0a2a4a;font-size:.66rem;border-right:2.5px solid #222;border-bottom:2.5px solid #222;border-top:none;cursor:default}
 .ch:last-child{border-right:none}
@@ -159,6 +194,10 @@ body.view-day .ce.sharp{border-top-width:2px}
 .overflow-ev .oe-time{font-size:.65rem;opacity:.85;flex-shrink:0;white-space:nowrap;margin-left:5px}
 /* events 20% transparent so grid lines show through */
 .ev{position:absolute;left:2px;right:2px;border-radius:6px;padding:3px 6px 3px 8px;font-size:.72rem;line-height:1.35;overflow:hidden;cursor:default;z-index:5;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:left .25s ease,right .25s ease,box-shadow .14s,transform .14s;opacity:0;animation:var(--ev-anim,evInGrow) var(--ev-dur,.44s) var(--ev-ease,cubic-bezier(.34,1.56,.64,1)) forwards;border-left-width:4px!important;border-left-style:solid!important;box-sizing:border-box;transform-style:preserve-3d;backface-visibility:hidden}
+.compact-ev.absence-shift,.overflow-ev.absence-shift{position:relative}
+.absence-shift::after{content:"";position:absolute;inset:0;width:auto;height:auto;background:linear-gradient(to top right,transparent calc(50% - 3px),rgba(255,255,255,.8) calc(50% - 3px),rgba(255,255,255,.8) calc(50% - 2px),#d71920 calc(50% - 2px),#d71920 calc(50% + 2px),rgba(255,255,255,.8) calc(50% + 2px),rgba(255,255,255,.8) calc(50% + 3px),transparent calc(50% + 3px));box-shadow:none;transform:none;z-index:8;pointer-events:none}
+.absence-label{position:relative;z-index:9;display:inline-block;margin-top:2px;padding:1px 4px;border-radius:3px;background:#b00020;color:#fff;font-size:.58rem;font-weight:900;line-height:1.25;letter-spacing:.04em;text-transform:uppercase;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.absence-shift .et,.absence-shift .es,.absence-shift .oe-name,.absence-shift .oe-time{position:relative;z-index:9}
 .ev .shift-delete{position:absolute;top:2px;right:2px;border:none;background:rgba(255,255,255,.9);color:#900;font-weight:700;border-radius:4px;width:18px;height:18px;line-height:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.8rem;}
 .ev .shift-delete:hover{background:#fff;color:#b00;}
 @keyframes evInGrow{0%{opacity:0;transform:scale(.9) translateY(7px);filter:blur(.5px)}65%{opacity:.88;transform:scale(1.025) translateY(-1.5px);filter:blur(0)}100%{opacity:.9;transform:scale(1) translateY(0);filter:blur(0)}}
@@ -176,6 +215,8 @@ body.view-day .ce.sharp{border-top-width:2px}
 .ev.main-event:before{content:attr(data-main-label);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);font-size:1rem;font-weight:700;color:rgba(40,40,40,0.23);pointer-events:none;white-space:nowrap}
 body.main-layer-hidden .ev.main-event{display:none}
 body.main-layer-hidden .allday-block.is-main{display:none!important}
+body.main-layer-hidden .absence-shift{display:none!important}
+body.merge-shifts .absence-shift{display:none!important}
 /* overflow hidden events: invisible by default, revealed on cell hover */
 .ev-overflow{position:absolute;bottom:2px;right:2px;background:rgba(30,30,30,.7);color:#fff;font-size:.58rem;font-weight:700;border-radius:4px;padding:1px 5px;z-index:15;pointer-events:none;letter-spacing:.3px}
 .ce.has-overflow:hover{z-index:200;background:#f0f6ff;box-shadow:0 4px 20px rgba(0,0,0,.2)}
@@ -452,6 +493,9 @@ body.theme-softy .ev:not(.main-event):not(.afspraak){opacity:.72!important}
 body.theme-softy .ev:not(.main-event):not(.afspraak):hover{opacity:.92!important}
 /* Overflow strip: no black lines */
 body.theme-softy .overflow-strip{border-top:1px solid rgba(0,0,0,.07)!important;border-right:1px solid rgba(0,0,0,.07)!important;border-bottom:none!important;background:rgba(0,0,0,.02)}
+body.theme-softy .weather-float{padding:2px 6px;border:0;border-radius:999px;background:rgba(255,255,255,.94);color:#2563eb;box-shadow:0 3px 11px rgba(37,99,235,.2)}
+body .absence-shift{opacity:.72!important}
+body.theme-blockery .absence-shift{opacity:.54!important}
 
 /* ── Logo spin on refresh ── */
 @keyframes logo-spin { to { transform: rotate(360deg); } }

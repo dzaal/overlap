@@ -3,6 +3,11 @@ const ICS_ROOSTER  = CONFIG.defaults.calendarUrl || 'https://calendar.google.com
 const ICS_AFSPRAKEN= CONFIG.defaults.appointmentUrl || 'https://calendar.google.com/calendar/ical/f99b1ad32b1aa1f543623c166d7b74e45155aee446a941d7d0342b38b41da904%40group.calendar.google.com/public/basic.ics';
 const ICS_MAIN     = CONFIG.defaults.mainEventCalendarUrl || 'https://calendar.google.com/calendar/ical/parknestflevopark%40gmail.com/public/basic.ics';
 const ICS = ICS_ROOSTER; // backward compat
+const WEATHER_ENABLED = CONFIG.defaults.weatherEnabled !== false;
+const WEATHER_LAT = Number(CONFIG.defaults.weatherLatitude ?? 52.3608);
+const WEATHER_LON = Number(CONFIG.defaults.weatherLongitude ?? 4.9487);
+const WEATHER_CACHE_KEY = 'overlap_weather_v2';
+let weatherByDate = {};
 
 // Each proxy function receives the exact ICS URL to fetch
 const PROXIES = [
@@ -46,6 +51,108 @@ function shouldFilterEvent(ev){
   if(!keywords || keywords.length === 0) return false;
   const title = (ev.title || '').toLowerCase();
   return keywords.some(kw => title.includes(kw.toLowerCase()));
+}
+
+function isAbsenceEvent(ev){
+  if(!ev||ev._cal==='main'||ev._cal==='afspraken')return false;
+  return /\b(?:is\s+er\s+niet|komt\s+niet|niet|afwezig|vakantie)\b/i.test(normalizeName(ev.title||''));
+}
+
+function eventBlockHtml(ev, timeHtml){
+  const absent=isAbsenceEvent(ev);
+  return `<div class="et">${esc(ev.title||'(geen titel)')}</div>${absent?'<div class="absence-label">AFWEZIG</div>':''}<div class="es">${timeHtml}</div>`;
+}
+
+function weatherIcon(code){
+  if(code===0)return '☀️';
+  if(code<=2)return '🌤️';
+  if(code===3)return '☁️';
+  if(code===45||code===48)return '🌫️';
+  if(code>=51&&code<=67)return '🌧️';
+  if(code>=71&&code<=77)return '🌨️';
+  if(code>=80&&code<=82)return '🌦️';
+  if(code>=85&&code<=86)return '🌨️';
+  if(code>=95)return '⛈️';
+  return '🌡️';
+}
+
+function novaWeatherIcon(code){
+  const attrs='viewBox="0 0 24 24" aria-hidden="true"';
+  if(code===0)return `<svg ${attrs}><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>`;
+  if(code<=3)return `<svg ${attrs}><path d="M7 17h10a4 4 0 0 0 .4-8 6 6 0 0 0-11.2 2A3 3 0 0 0 7 17Z"/><path d="M8 7a4 4 0 0 1 7-2"/></svg>`;
+  if(code===45||code===48)return `<svg ${attrs}><path d="M4 8h16M2 12h16M6 16h16"/></svg>`;
+  if(code>=71&&code<=77||code>=85&&code<=86)return `<svg ${attrs}><path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6.2 7 3 3 0 0 0 7 13Z"/><path d="m8 17 1 1-1 1M12 17l1 1-1 1M16 17l1 1-1 1"/></svg>`;
+  if(code>=95)return `<svg ${attrs}><path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6.2 7 3 3 0 0 0 7 13Z"/><path d="m13 14-3 5h3l-2 3"/></svg>`;
+  return `<svg ${attrs}><path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6.2 7 3 3 0 0 0 7 13Z"/><path d="m8 16-1 3M12 16l-1 3M16 16l-1 3"/></svg>`;
+}
+
+function weatherIconsClass(code){
+  if(code===0)return 'wi-day-sunny';
+  if(code<=2)return 'wi-day-cloudy';
+  if(code===3)return 'wi-cloudy';
+  if(code===45||code===48)return 'wi-fog';
+  if(code>=51&&code<=67)return 'wi-rain';
+  if(code>=71&&code<=77)return 'wi-snow';
+  if(code>=80&&code<=82)return 'wi-showers';
+  if(code>=85&&code<=86)return 'wi-snow';
+  if(code>=95)return 'wi-thunderstorm';
+  return 'wi-cloudy';
+}
+
+function weatherIconMarkup(code){
+  const weatherIconsTheme=document.body.classList.contains('theme-nova')||(document.body.classList.contains('theme-softy')&&document.body.classList.contains('view-day'))||(document.body.classList.contains('theme-blockery')&&document.body.classList.contains('view-week'));
+  if(weatherIconsTheme)return `<i class="wi ${weatherIconsClass(code)}"></i>`;
+  const lineIcon=document.body.classList.contains('theme-sketchy')||document.body.classList.contains('theme-blockery');
+  return lineIcon?novaWeatherIcon(code):weatherIcon(code);
+}
+
+function dateKey(d){return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;}
+
+async function fetchWeather(force=false){
+  if(!WEATHER_ENABLED)return;
+  try{
+    const cached=JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY)||'null');
+    if(cached?.days)weatherByDate=cached.days;
+    if(!force&&cached?.savedAt&&Date.now()-cached.savedAt<45*60*1000){weatherByDate=cached.days||{};return;}
+  }catch(e){}
+  try{
+    const url=`app/weather.php?lat=${encodeURIComponent(WEATHER_LAT)}&lon=${encodeURIComponent(WEATHER_LON)}`;
+    const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(30000)});
+    if(!response.ok)throw new Error(`Weather HTTP ${response.status}`);
+    const data=await response.json();
+    const days={};
+    (data.hourly?.time||[]).forEach((stamp,i)=>{
+      const key=stamp.slice(0,10),hour=Number(stamp.slice(11,13));
+      if(![10,13,16,19].includes(hour))return;
+      days[key]??={};
+      days[key][hour]={temperature:Math.round(data.hourly.temperature_2m[i]),code:data.hourly.weather_code[i]};
+    });
+    weatherByDate=days;
+    localStorage.setItem(WEATHER_CACHE_KEY,JSON.stringify({savedAt:Date.now(),days}));
+  }catch(e){
+    // Weather is optional; retain stale cache and never block the roster.
+  }
+}
+
+function weatherSamples(d){
+  const day=weatherByDate[dateKey(d)]||{};
+  return [10,13,16,19].filter(hour=>day[hour]).map(hour=>({hour,...day[hour]}));
+}
+
+function addWeatherMarkers(container,colDefs,sh,eh){
+  colDefs.forEach(cd=>{
+    const colKey=cd.days[0].toDateString();
+    weatherSamples(cd.days[0]).forEach(sample=>{
+      if(sample.hour<sh||sample.hour>=eh)return;
+      const cell=container.querySelector(`[data-col="${colKey}"][data-h="${sample.hour}"]`);
+      if(!cell)return;
+      const marker=document.createElement('span');
+      marker.className='weather-float';
+      marker.title=`Verwachting ${p2(sample.hour)}:00: ${sample.temperature}°C`;
+      marker.innerHTML=`<span class="weather-symbol">${weatherIconMarkup(sample.code)}</span><span class="weather-temp">${sample.temperature}°</span>`;
+      cell.appendChild(marker);
+    });
+  });
 }
 
 async function loadGoogleClient(){
@@ -530,6 +637,7 @@ async function fetchEvents(silent=false, forceRefresh=false){
   }
 
   try {
+    fetchWeather(forceRefresh).then(()=>render(0));
     const [rooster, afspraken, mainEv] = await Promise.allSettled([
       fetchOne(ICS_ROOSTER,  'rooster'),
       fetchOne(ICS_AFSPRAKEN,'afspraken'),
@@ -827,7 +935,12 @@ function crewAliasMap(){
 }
 
 function crewForName(name){
-  const canonical=crewAliasMap().get(normalizeCrewToken(name));
+  const aliases=crewAliasMap();
+  let canonical=aliases.get(normalizeCrewToken(name));
+  if(!canonical){
+    const words=String(name||'').match(/[A-Za-zÀ-ÿ0-9?`'’‘´-]+/g)||[];
+    canonical=words.map(word=>aliases.get(normalizeCrewToken(word))).find(Boolean);
+  }
   return (CONFIG.crew||[]).find(c=>c.name===canonical);
 }
 
@@ -1540,6 +1653,7 @@ function buildCompactCard(container, days, today, exp){
     const k=d.toDateString();
     const tc=same(d,today)?' tc':'';
     const evs=exp.filter(ev=>{
+      if(window._mergeShifts&&isAbsenceEvent(ev))return false;
       const ds=new Date(ev.start);ds.setHours(0,0,0,0);
       return ds.toDateString()===k;
     }).sort((a,b)=>a.start-b.start);
@@ -1562,10 +1676,11 @@ function buildCompactCard(container, days, today, exp){
         const [bg,tx,ac]=PALETTES[nameHash(keyName)];
         const isQuestion = nameHasQuestionMark(rawName);
         const isDanger = rawName.includes('**');
+        const isAbsent = isAbsenceEvent(ev);
         const ts=ev.start._ad?'Hele dag':`${p2(ev.start.getHours())}:${p2(ev.start.getMinutes())}`;
         const te=ev.end&&!ev.end._ad?`–${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:' ';
-        html+=`<div class="compact-ev${isQuestion?' question-shift':''}${isDanger?' danger-shift':''}" style="background:${bg};color:${tx};border-left-color:${ac};--sk-bg-color:${bg};--sk-ink-color:${sketchInkFromHex(bg)};animation-delay:${idx++*40}ms;${sketchTextureStyle(ev,'compact')}">
-          <span class="et">${ev.title||'(geen titel)'}</span>
+        html+=`<div class="compact-ev${isQuestion?' question-shift':''}${isDanger?' danger-shift':''}${isAbsent?' absence-shift':''}" style="background:${bg};color:${tx};border-left-color:${ac};--sk-bg-color:${bg};--sk-ink-color:${sketchInkFromHex(bg)};animation-delay:${idx++*40}ms;${sketchTextureStyle(ev,'compact')}">
+          <span class="et">${esc(ev.title||'(geen titel)')}</span>${isAbsent?'<span class="absence-label">AFWEZIG</span>':''}
           <span class="es">${ts} ${te}</span>
         </div>`;
       });
@@ -1696,6 +1811,7 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
     if(pub) alldayEvs.push({title:pub,_cal:'holiday',start:Object.assign(new Date(d),{_ad:true})});
     exp.forEach(ev=>{
       if(!ev.start._ad)return;
+      if(window._mergeShifts&&isAbsenceEvent(ev))return;
       const ds=new Date(ev.start);ds.setHours(0,0,0,0);
       const de=ev.end?new Date(ev.end):new Date(ds.getTime()+86400000);de.setHours(0,0,0,0);
       for(let dd=new Date(ds);dd<de;dd.setDate(dd.getDate()+1)){if(dd.toDateString()===k)alldayEvs.push(ev);}
@@ -1727,11 +1843,21 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
       line.style.cssText=`position:absolute;left:0;right:0;top:${(hr-sh)*CHH}px;border-top:${sharp?'1px dashed rgba(0,0,0,0.12)':'1px dotted rgba(0,0,0,0.06)'};pointer-events:none;z-index:1`;
       gridArea.appendChild(line);
     }
+    weatherSamples(d).forEach(sample=>{
+      if(sample.hour<sh||sample.hour>=eh)return;
+      const marker=document.createElement('span');
+      marker.className='weather-float weather-float-compact';
+      marker.style.top=`${(sample.hour-sh)*CHH+2}px`;
+      marker.title=`Verwachting ${p2(sample.hour)}:00: ${sample.temperature}°C`;
+      marker.innerHTML=`<span class="weather-symbol">${weatherIconMarkup(sample.code)}</span><span class="weather-temp">${sample.temperature}°</span>`;
+      gridArea.appendChild(marker);
+    });
 
     // Collect timed events for this day
     const timedEvs=exp.filter(ev=>{
       if(ev.start._ad)return false;
       if(mainHidden&&ev._cal==='main')return false;
+      if((mainHidden||window._mergeShifts)&&isAbsenceEvent(ev))return false;
       const ds=new Date(ev.start);ds.setHours(0,0,0,0);
       return ds.toDateString()===k;
     });
@@ -1791,7 +1917,8 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
 
       const dv=document.createElement('div');
       const isDanger=(ev.title||'').includes('**');
-      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(isDanger?' danger-shift':'')+(ev._merged?' merged-shift':'');
+      const isAbsent=isAbsenceEvent(ev);
+      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(isDanger?' danger-shift':'')+(isAbsent?' absence-shift':'')+(ev._merged?' merged-shift':'');
       if(ev._merged){applyMergedColor(dv,ev._merged);}else{applyColor(dv,ev.title||'');applySketchTexture(dv,ev,'split');}
       if(ev._cal==='afspraken'){dv.style.background='#fde8e8';dv.style.color='#7b1111';}
       if(ev._cal==='afspraken'){
@@ -1811,7 +1938,7 @@ function buildCompactTimeGrid(container, days, today, exp, sh, eh){
       animIdx++;
       const ts=`${p2(ev.start.getHours())}:${p2(ev.start.getMinutes())}`;
       const te=ev.end&&!ev.end._ad?` – ${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:'';
-      dv.innerHTML=`<div class="et">${ev.title||'(geen titel)'}</div><div class="es">${ts}${te}</div>`;
+      dv.innerHTML=eventBlockHtml(ev,`${ts}${te}`);
       dv.addEventListener('mousemove',e=>showTip(e,ev));dv.addEventListener('mouseleave',hideTip);
       dv.addEventListener('touchend',e=>activateEventBlock(e,dv,ev),{passive:false});
       dv.addEventListener('click',e=>activateEventBlock(e,dv,ev));
@@ -2029,6 +2156,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
     });
   }
   container.innerHTML=h;
+  addWeatherMarkers(container,colDefs,sh,eh);
 
   // Tooltip listeners for all-day / afspraken blocks
   container.querySelectorAll('[data-adtip]').forEach(el=>{
@@ -2064,7 +2192,8 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
   colDefs.forEach(cd=>{ colEvents[cd.days[0].toDateString()]=[] });
   exp.forEach(ev=>{
     if(ev.start._ad)return;
-    if(mainHidden && ev._cal==='main')return; // exclude from overlap calc when layer hidden
+    if(mainHidden&&ev._cal==='main')return;
+    if((mainHidden||window._mergeShifts)&&isAbsenceEvent(ev))return;
     const ds=new Date(ev.start);ds.setHours(0,0,0,0);
     const k=ds.toDateString();
     if(colEvents[k]!==undefined) colEvents[k].push(ev);
@@ -2121,7 +2250,8 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       const cell=container.querySelector(`[data-col="${colKey}"][data-h="${cH}"]`);if(!cell)return;
       const dv=document.createElement('div');
       const isDanger=(ev.title||'').includes('**');
-      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(ev._cal==='main'?' main-event':'')+(isDanger?' danger-shift':'')+(ev._merged?' merged-shift':'');
+      const isAbsent=isAbsenceEvent(ev);
+      dv.className='ev'+(ev._cal==='afspraken'?' afspraak':'')+(ev._cal==='main'?' main-event':'')+(isDanger?' danger-shift':'')+(isAbsent?' absence-shift':'')+(ev._merged?' merged-shift':'');
       if(ev._merged){applyMergedColor(dv,ev._merged);}else{applyColor(dv,ev.title||'');applySketchTexture(dv,ev,'grid');}
       if(ev._cal==='main'){
         dv.style.background='linear-gradient(135deg, rgba(173,244,210,.45), rgba(63,190,116,.25))';
@@ -2167,7 +2297,7 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
       if(ev._cal==='main'){
         dv.dataset.mainLabel = ev.title||'Main event';
       }
-      dv.innerHTML=`<div class="et">${ev.title||'(geen titel)'}</div>${ts?`<div class="es">${ts}${te}</div>`:''}`;
+      dv.innerHTML=eventBlockHtml(ev,ts?`${ts}${te}`:'');
       if(ev._cal==='custom' && ev.localId){
         const del=document.createElement('button');
         del.className='shift-delete';
@@ -2208,10 +2338,11 @@ function buildGrid(container, colDefs, today, exp, _cm, _ci, _byDay, sh, eh){
           const ts=ev.start._ad?'':`${p2(ev.start.getHours())}:${p2(ev.start.getMinutes())}`;
           const te=(!ev.start._ad&&ev.end&&!ev.end._ad)?` – ${p2(ev.end.getHours())}:${p2(ev.end.getMinutes())}`:'';
           const row=document.createElement('div');
-          row.className='overflow-ev';
+          const isAbsent=isAbsenceEvent(ev);
+          row.className='overflow-ev'+(isAbsent?' absence-shift':'');
           row.style.cssText=`background:${bg};color:${tx};border-left-color:${ac};--sk-bg-color:${bg};--sk-ink-color:${sketchInkFromHex(bg)};animation-delay:${idx*40}ms`;
           applySketchTexture(row,ev,'overflow');
-          row.innerHTML=`<span class="oe-name">${ev.title||'?'}</span><span class="oe-time">${ts?` ${ts}${te}`:''}</span>`;
+          row.innerHTML=`<span class="oe-name">${esc(ev.title||'?')}</span>${isAbsent?'<span class="absence-label">AFWEZIG</span>':''}<span class="oe-time">${ts?` ${ts}${te}`:''}</span>`;
           row.addEventListener('mousemove',e=>showTip(e,ev));
           row.addEventListener('mouseleave',hideTip);
           row.addEventListener('touchend',e=>{e.preventDefault();const t=e.changedTouches[0];showTip({clientX:t.clientX,clientY:t.clientY},ev);},{passive:false});
@@ -2365,10 +2496,12 @@ function _animateCrewPositions(toHidden){
 // Merge shifts toggle
 (function(){
   window._mergeShifts=localStorage.getItem('mergeShifts')==='1';
+  document.body.classList.toggle('merge-shifts',window._mergeShifts);
   const chk=document.getElementById('mergeShiftsToggle');
   if(chk)chk.checked=window._mergeShifts;
   document.getElementById('mergeShiftsToggle')?.addEventListener('change',e=>{
     window._mergeShifts=e.target.checked;
+    document.body.classList.toggle('merge-shifts',window._mergeShifts);
     localStorage.setItem('mergeShifts',window._mergeShifts?'1':'0');
     render(0);
   });
@@ -2379,10 +2512,11 @@ document.getElementById('mainLayerToggle')?.addEventListener('change',(e)=>{
   if(nowHidden){
     // Hiding: animate shifts first, then hide main events after animation
     _animateCrewPositions(true);
-    setTimeout(()=>document.body.classList.add('main-layer-hidden'),260);
+    setTimeout(()=>{document.body.classList.add('main-layer-hidden');render(0);},260);
   } else {
     // Showing: reveal main events first, then animate shifts into position
     document.body.classList.remove('main-layer-hidden');
+    render(0);
     setTimeout(()=>_animateCrewPositions(false),150);
   }
 });

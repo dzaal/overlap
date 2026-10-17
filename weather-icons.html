@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vergelijking weericonen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#16231b;--green:#24563a;--paper:#f4f6f0;--line:#cbd3c9;--sun:#f5b82e;--rain:#3b82a0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif}
+header{padding:32px clamp(18px,5vw,72px) 25px;background:var(--green);color:#fff;border-bottom:5px solid #173b28}
+header h1{margin:0 0 7px;font-size:clamp(1.8rem,4vw,3rem);line-height:1}
+header p{max-width:660px;margin:0;color:#dce9df;font-size:.98rem}
+main{width:min(1180px,calc(100% - 28px));margin:28px auto 48px}
+.guide{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:16px}
+.guide p{margin:0;max-width:650px;color:#536158;font-size:.9rem}
+.legend{font-size:.78rem;font-weight:700;white-space:nowrap}
+.board{overflow-x:auto;background:#fff;border:2px solid var(--ink);box-shadow:6px 6px 0 #aab6aa}
+.row{display:grid;grid-template-columns:150px repeat(8,minmax(96px,1fr));min-width:930px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.cell{min-height:116px;padding:13px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid var(--line);text-align:center}
+.cell:first-child{border-left:0;align-items:flex-start;text-align:left;padding:18px}
+.head .cell{min-height:62px;background:#edf1eb;font-size:.75rem;font-weight:700}
+.head .cell:not(:first-child){justify-content:end}
+.set{cursor:pointer;transition:background .15s}
+.set:hover,.set.selected{background:#eef6ef}
+.set.selected .set-name::after{content:'gekozen';display:block;margin-top:8px;color:var(--green);font-size:.68rem}
+.set-name{font-size:1rem;font-weight:700}
+.set-desc{display:block;margin-top:4px;color:#68736b;font-size:.73rem;line-height:1.35}
+.icon{width:52px;height:52px;display:grid;place-items:center;margin-bottom:8px;font-size:2.65rem;line-height:1}
+.icon svg{width:48px;height:48px;overflow:visible}
+.outline svg{fill:none;stroke:#171d19;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.solid svg{fill:#171d19;stroke:none}
+.weather-name{font-size:.72rem;color:#68736b}
+.choice{min-height:24px;margin-top:20px;font-size:.9rem;font-weight:700;color:var(--green)}
+@media(max-width:640px){header{padding-top:25px}.guide{display:block}.legend{display:block;margin-top:9px}.board{box-shadow:4px 4px 0 #aab6aa}.row{grid-template-columns:125px repeat(8,92px)}.cell{min-height:104px}.icon{width:46px;height:46px}.icon svg{width:43px;height:43px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Welke weericonen werken het best?</h1>
+  <p>Dezelfde acht bekende weersituaties, naast elkaar op dezelfde schaal. Klik op een rij om een complete set te markeren.</p>
+</header>
+<main>
+  <div class="guide">
+    <p>Deze pagina verandert het rooster nog niet. Kies één set, of geef aan welke set je per thema wilt gebruiken.</p>
+    <span class="legend">A = kleur · B = lijn · C = gevuld</span>
+  </div>
+  <div class="board" id="board"></div>
+  <div class="choice" id="choice">Nog geen set gekozen.</div>
+</main>
+<script>
+const weather=[
+  ['Zonnig','☀️','sun'],['Licht bewolkt','🌤️','partly'],['Bewolkt','☁️','cloud'],['Mist','🌫️','fog'],
+  ['Regen','🌧️','rain'],['Buien','🌦️','showers'],['Sneeuw','🌨️','snow'],['Onweer','⛈️','storm']
+];
+const outline={
+  sun:'<circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
+  partly:'<path d="M7 18h10a4 4 0 0 0 .4-8 6 6 0 0 0-11.2 2A3 3 0 0 0 7 18Z"/><path d="M8 8a4 4 0 0 1 7-2M13 2v2M19 6l-1.4 1.4"/>',
+  cloud:'<path d="M6 18h12a4 4 0 0 0 .4-8 6.5 6.5 0 0 0-12.2 2A3 3 0 0 0 6 18Z"/>',
+  fog:'<path d="M4 8h16M2 12h16M6 16h16"/>',
+  rain:'<path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6.2 7 3 3 0 0 0 7 13Z"/><path d="m8 16-1 3M12 16l-1 3M16 16l-1 3"/>',
+  showers:'<path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6.2 7 3 3 0 0 0 7 13Z"/><path d="m9 16-1 3M15 16l-1 3"/><path d="M19 16v4M17 18h4"/>',
+  snow:'<path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6.2 7 3 3 0 0 0 7 13Z"/><path d="m8 17 1 1-1 1M12 17l1 1-1 1M16 17l1 1-1 1"/>',
+  storm:'<path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6.2 7 3 3 0 0 0 7 13Z"/><path d="m13 14-3 5h3l-2 3"/>'
+};
+const solid={
+  sun:'<circle cx="12" cy="12" r="5"/><path d="M11 1h2v4h-2zM11 19h2v4h-2zM1 11h4v2H1zM19 11h4v2h-4zM3.5 4.9l1.4-1.4 2.8 2.8-1.4 1.4zM16.3 17.7l1.4-1.4 2.8 2.8-1.4 1.4zM16.3 6.3l2.8-2.8 1.4 1.4-2.8 2.8zM3.5 19.1l2.8-2.8 1.4 1.4-2.8 2.8z"/>',
+  partly:'<circle cx="15.5" cy="7" r="4"/><path d="M6 19h12a4 4 0 0 0 0-8h-.8A6 6 0 0 0 5.6 13 3 3 0 0 0 6 19Z"/>',
+  cloud:'<path d="M5.5 19h13a4.5 4.5 0 0 0 .2-9A7 7 0 0 0 5.2 12 3.5 3.5 0 0 0 5.5 19Z"/>',
+  fog:'<rect x="2" y="6" width="20" height="2" rx="1"/><rect x="5" y="11" width="15" height="2" rx="1"/><rect x="1" y="16" width="18" height="2" rx="1"/>',
+  rain:'<path d="M5.5 14h13a4.5 4.5 0 0 0 .2-9A7 7 0 0 0 5.2 7 3.5 3.5 0 0 0 5.5 14Z"/><path d="M7 17h2l-2 5H5zM12 17h2l-2 5h-2zM17 17h2l-2 5h-2z"/>',
+  showers:'<path d="M5.5 14h13a4.5 4.5 0 0 0 .2-9A7 7 0 0 0 5.2 7 3.5 3.5 0 0 0 5.5 14Z"/><path d="M8 17h2l-2 5H6zM15 17h2l-2 5h-2z"/>',
+  snow:'<path d="M5.5 14h13a4.5 4.5 0 0 0 .2-9A7 7 0 0 0 5.2 7 3.5 3.5 0 0 0 5.5 14Z"/><circle cx="7" cy="19" r="1.5"/><circle cx="12" cy="17.5" r="1.5"/><circle cx="17" cy="20" r="1.5"/>',
+  storm:'<path d="M5.5 14h13a4.5 4.5 0 0 0 .2-9A7 7 0 0 0 5.2 7 3.5 3.5 0 0 0 5.5 14Z"/><path d="M12 14h5l-3 4h3l-7 6 2-5H9z"/>'
+};
+const svg=paths=>`<svg viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
+const sets=[
+  {id:'A',name:'Bekend in kleur',desc:'Direct herkenbare apparaaticonen',cls:'emoji',icon:w=>w[1]},
+  {id:'B',name:'Zwarte lijn',desc:'Rustig, licht en technisch helder',cls:'outline',icon:w=>svg(outline[w[2]])},
+  {id:'C',name:'Zwart-wit gevuld',desc:'Sterk silhouet, zichtbaar op afstand',cls:'solid',icon:w=>svg(solid[w[2]])}
+];
+const board=document.getElementById('board');
+board.innerHTML=`<div class="row head"><div class="cell">Complete set</div>${weather.map(w=>`<div class="cell">${w[0]}</div>`).join('')}</div>`+
+  sets.map(set=>`<div class="row set" data-set="${set.id}" tabindex="0"><div class="cell"><span class="set-name">Set ${set.id}: ${set.name}</span><span class="set-desc">${set.desc}</span></div>${weather.map(w=>`<div class="cell"><span class="icon ${set.cls}">${set.icon(w)}</span><span class="weather-name">${w[0]}</span></div>`).join('')}</div>`).join('');
+function choose(row){document.querySelectorAll('.set').forEach(el=>el.classList.toggle('selected',el===row));document.getElementById('choice').textContent=`Gekozen: ${row.querySelector('.set-name').textContent}.`}
+document.querySelectorAll('.set').forEach(row=>{row.addEventListener('click',()=>choose(row));row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(row)}})});
+</script>
+</body>
+</html>

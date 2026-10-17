@@ -1,0 +1,13 @@
+/* Mono: high-contrast black-and-white theme. */
+body.theme-mono{--gd:#0b0b0b;--gm:#262626;--gl:#707070;--ac:#111;--gp:#e8e8e8;--cr:#fff;--tx:#111;--mu:#666;background:#f3f3f0;color:#111}
+body.theme-mono header{background:#090909;color:#fff;border-bottom:3px solid #000;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+body.theme-mono .nb,body.theme-mono .tb,body.theme-mono .vt,body.theme-mono .layer-toggle,body.theme-mono .hdr-date-btn,body.theme-mono #ls{background:#fff;color:#111;border:1px solid #111;border-radius:0;box-shadow:2px 2px 0 #777}
+body.theme-mono .vb.on{background:#fff;color:#000}
+body.theme-mono #cg,body.theme-mono .split-wrap>div,body.theme-mono .phone-day-grid{border:2px solid #111;border-radius:0;box-shadow:4px 4px 0 #aaa}
+body.theme-mono .ch,body.theme-mono .compact-card-hdr{background:#eee;color:#111;border-color:#555}
+body.theme-mono .tl,body.theme-mono .ce,body.theme-mono .allday-row{background:#fff;border-color:#aaa}
+body.theme-mono .ev,body.theme-mono .compact-ev,body.theme-mono .overflow-ev,body.theme-mono .allday-block{filter:grayscale(1);border-radius:1px!important;box-shadow:2px 2px 0 rgba(0,0,0,.3)!important}
+body.theme-mono .weather-float{padding:2px 5px;border:1px solid #111;border-radius:0;background:#fff;color:#000;box-shadow:2px 2px 0 #777;font-family:'DM Sans',sans-serif}
+body.theme-mono .weather-symbol{filter:grayscale(1);font-size:1.5em}
+body.theme-mono .absence-label{border-radius:0;background:#111}
+body.theme-mono .absence-shift::after{background:#111;box-shadow:0 0 0 1px #fff}

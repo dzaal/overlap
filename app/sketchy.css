@@ -832,3 +832,38 @@ body.theme-sketchy.view-day #weekStrip .ws-dot.has-ev {
 body.theme-sketchy.view-day #weekStrip .ws-day:hover {
   background: rgba(0,0,0,.04);
 }
+body.theme-sketchy .weather-float{
+  min-width:0;
+  min-height:0;
+  justify-content:center;
+  padding:1px 2px;
+  border:0;
+  border-radius:0;
+  background:transparent!important;
+  color:var(--sk-ink);
+  font-family:'Architects Daughter',cursive;
+  font-size:.82rem;
+  font-weight:700;
+  line-height:1;
+  box-shadow:none;
+  text-shadow:1px 1px 0 rgba(255,249,233,.95);
+  transform:rotate(-1.5deg);
+}
+
+body.theme-sketchy .weather-float-compact{transform:rotate(1deg)}
+body.theme-sketchy .weather-symbol{font-size:3em}
+body.theme-sketchy .weather-symbol svg{display:block;width:1em;height:1em;fill:none;stroke:#211f1a;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+body.theme-sketchy .absence-shift::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  width:auto;
+  height:auto;
+  border:0;
+  background:linear-gradient(to top right,transparent calc(50% - 4px),rgba(255,249,233,.95) calc(50% - 4px),rgba(255,249,233,.95) calc(50% - 3px),#c9151e calc(50% - 3px),#c9151e calc(50% + 2px),rgba(255,249,233,.95) calc(50% + 2px),rgba(255,249,233,.95) calc(50% + 4px),transparent calc(50% + 4px));
+  box-shadow:none;
+  transform:none;
+  z-index:8;
+  pointer-events:none;
+}

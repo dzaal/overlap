@@ -67,49 +67,13 @@ try {
 $d              = $cfg['defaults'] ?? [];
 $weekStartDay   = $d['weekStartDay']   ?? 1;                  // 1=Monday default
 $alwaysShowDays = $d['alwaysShowDays'] ?? [0, 1, 3, 4, 5, 6]; // default: all except Tuesday
-// Strip category prefixes from any existing labels and write back immediately
-$importantDates = array_map(function ($entry) {
-    $entry['label'] = trim(preg_replace(
-        '/^(?:Schoolvakantie|Nationale feestdag|Feestdag|Vakantie|Bijzondere dag|Holiday)\s*:\s*/iu',
-        '', $entry['label']
-    ));
-    return $entry;
-}, $d['importantDates'] ?? []);
-if ($importantDates !== ($d['importantDates'] ?? [])) {
-    try {
-        $cfg2 = Config::read();
-        $cfg2['defaults']['importantDates'] = $importantDates;
-        Config::write($cfg2);
-    } catch (\Throwable $e) { /* silently ignore */ }
-}
+$importantDates = $d['importantDates'] ?? [];
 
 $dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 $dayShort = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 include '_header.php';
 ?>
-<style>
-/* ── Important dates: mobile card layout ── */
-@media (max-width: 640px) {
-  #datesTable thead { display: none; }
-  #datesTable,#datesTable tbody { display: block; }
-  #datesTable tbody tr {
-    display: grid;
-    grid-template-columns: 1fr 1fr 36px;
-    grid-template-rows: auto auto;
-    gap: 4px 6px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-  }
-  #datesTable td { display: block; padding: 0; border: none; background: none; }
-  #datesTable td:nth-child(1) { grid-column: 1 / 3; grid-row: 1; } /* Label */
-  #datesTable td:nth-child(2) { grid-column: 1;     grid-row: 2; } /* From */
-  #datesTable td:nth-child(3) { grid-column: 2;     grid-row: 2; } /* Until */
-  #datesTable td:nth-child(4) { grid-column: 3;     grid-row: 1; display: flex; align-items: center; }
-  #datesTable td input[type=date] { font-size: .72rem; padding: 3px 4px; }
-  #datesTable td input[type=text] { font-size: .8rem; }
-}
-</style>
 
 <div class="page-header">
   <div>
@@ -223,24 +187,24 @@ include '_header.php';
       <table class="data-table" id="datesTable">
         <thead>
           <tr>
+            <th style="width:148px">From</th>
+            <th style="width:148px">Until (optional)</th>
             <th>Label</th>
-            <th style="width:136px">From</th>
-            <th style="width:136px">Until (optional)</th>
-            <th style="width:44px"></th>
+            <th style="width:50px"></th>
           </tr>
         </thead>
         <tbody id="datesTbody">
           <?php foreach ($importantDates as $entry): ?>
           <tr>
-            <td><input type="text" name="importantLabel[]"
-                       value="<?= htmlspecialchars($entry['label']) ?>"
-                       placeholder="Label" style="width:100%"></td>
             <td><input type="date" name="importantDate[]"
                        value="<?= htmlspecialchars($entry['date']) ?>"
                        style="width:100%" required></td>
             <td><input type="date" name="importantEndDate[]"
                        value="<?= htmlspecialchars($entry['endDate'] ?? '') ?>"
                        style="width:100%"></td>
+            <td><input type="text" name="importantLabel[]"
+                       value="<?= htmlspecialchars($entry['label']) ?>"
+                       placeholder="e.g. Christmas, Summer vacation" style="width:100%"></td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">✕</button></td>
           </tr>
           <?php endforeach; ?>
@@ -303,16 +267,16 @@ function addDateRow(from, until, label) {
   const tbody = document.getElementById('datesTbody');
   const tr    = document.createElement('tr');
   tr.innerHTML = `
-    <td><input type="text" name="importantLabel[]"   placeholder="Label" style="width:100%"></td>
     <td><input type="date" name="importantDate[]"    style="width:100%" required></td>
     <td><input type="date" name="importantEndDate[]" style="width:100%"></td>
+    <td><input type="text" name="importantLabel[]"   placeholder="e.g. Christmas, Summer vacation" style="width:100%"></td>
     <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">✕</button></td>`;
   tbody.appendChild(tr);
   const inputs = tr.querySelectorAll('input');
-  if (label) inputs[0].value = label;
-  if (from)  inputs[1].value = from;
-  if (until) inputs[2].value = until;
-  if (!label) inputs[0].focus();
+  if (from)  inputs[0].value = from;
+  if (until) inputs[1].value = until;
+  if (label) inputs[2].value = label;
+  if (!from) inputs[0].focus();
 }
 
 function importICS(input) {
