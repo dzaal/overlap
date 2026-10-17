@@ -7,7 +7,7 @@
 **All rosters, calendars and events in one clear overview.**
 
 <table align="right" style="margin-left:24px;border:none">
-  <tr><td align="center"><img src="docs/screen-week-desktop.png" alt="Week view — desktop" width="600"><br><sub>Week view — desktop</sub></td></tr>
+  <tr><td align="center"><img src="docs/screen-week-desktop.png" alt="Week view — desktop with weather" width="600"><br><sub>Week view — weather integration, absence detection · October 2026</sub></td></tr>
   <tr><td align="center"><img src="docs/screen-week-tablet.png" alt="Week view — medium screen" width="400"><br><sub>Week view — medium screen (split layout)</sub></td></tr>
   <tr>
     <td align="center">
@@ -54,12 +54,14 @@ Because all these layers appear together in a single view, the connections becom
 
 - **Multi-calendar overlay** — read multiple ICS feeds and render them as one visual schedule
 - **Week view and day view** — responsive grid that adapts to desktop, tablet and phone
+- **Weather integration** — live hourly forecasts from Open-Meteo overlaid directly on the schedule as floating icon + temperature badges; weather icon and temperature display are independently toggleable in the settings panel
+- **Absence detection** — events whose title contains absence keywords (`afwezig`, `vakantie`, `niet`) are visually marked with a diagonal red stripe and an AFWEZIG badge; merge-shifts mode hides them from the schedule entirely
 - **Hours overview** — compact worked-hours report per volunteer, with week/month/year totals and inline drill-downs for payment administration
 - **Day-view week strip** — tap any day chip to navigate; selected day highlighted with a filled circle
 - **Full-screen day view** — day view stretches edge-to-edge for maximum readability
 - **Colour-coded crew** — each volunteer gets a personal colour; shifts are instantly recognisable
 - **All-day event pills** — multi-day events span across the top of the grid
-- **Important dates** — holidays, school vacations and custom date ranges shown as labels on calendar days, managed via the admin panel
+- **Important dates** — holidays, school vacations and custom date ranges shown as labels on calendar day headers, managed via the admin panel
 - **ICS import for important dates** — upload an `.ics` file; consecutive same-named events are automatically collapsed into date ranges; category prefixes (`Schoolvakantie:`, `Nationale feestdag:` etc.) are stripped automatically
 - **Always-show days** — configure which weekdays are always visible vs. hidden when empty
 - **Week start** — choose Monday or Sunday as the first day of the week (persisted per-user in a cookie)
@@ -69,8 +71,8 @@ Because all these layers appear together in a single view, the connections becom
 - **PWA** — installable on Android, iOS and desktop; "Install as app" button in the hamburger menu, including iPhone/iPad instructions
 - **Auto-update detection** — the app polls for file changes every 10 minutes and on tab focus; when a new version is deployed a pulsing badge appears on the hamburger and a reload prompt inside the drawer
 - **Auto-refresh** — configurable calendar refresh interval (5 / 15 / 30 / 60 min or off) stored per-user in a cookie; scheduled/manual refreshes force a fresh ICS fetch
-- **Hamburger drawer** — always-visible slide-in menu containing Hours overview, Print, Share, Install, Settings (theme, week start, refresh interval) and version / author info
-- **Theme system** — three built-in themes; add your own by dropping a CSS file in `app/`
+- **Hamburger drawer** — always-visible slide-in menu containing Hours overview, Print, Share, Install, Settings (theme, week start, refresh interval, weather toggles) and version / author info
+- **Theme system** — six built-in themes; add your own by dropping a CSS file in `app/`
 - **Spring-curve event animations** — crew shifts pop in with an overshoot spring animation
 - **No database** — the entire configuration lives in a single JavaScript file (`overlap-config.js`)
 
@@ -78,13 +80,17 @@ Because all these layers appear together in a single view, the connections becom
 
 ## Themes
 
-Overlap ships with three themes, selectable in the Display admin page or the in-app settings drawer:
+Overlap ships with six themes, selectable in the Display admin page or the in-app settings drawer:
 
 | Theme | Description |
 |---|---|
 | **Blockery** | Bold grid with thick black borders and large date numbers (default) |
 | **Softy** | Rounded layout with circle day labels, no black borders, white header |
-| **Nova** | Dark space aesthetic: navy/indigo header, pastel crew shifts with shimmer animation, white time column |
+| **Nova** | Dark space aesthetic: navy/indigo header, pastel crew shifts with shimmer animation |
+| **Sketchy** | Hand-drawn look with rough borders and a handwritten font |
+| **Mono** | High-contrast black-and-white; ideal for print-like clarity |
+
+Each theme includes its own weather float styling (floating icon + temperature badge on the schedule grid).
 
 To add your own theme, create `app/mytheme.css` with selectors prefixed by `body.theme-mytheme {}`. It will appear automatically in the theme selector in the admin panel.
 
@@ -112,14 +118,20 @@ Changes are written back to `overlap-config.js` immediately. The manifest (`over
 overlap/
 ├── index.php                   # Main calendar app (PHP shell — reads config for theme/branding)
 ├── app/
-│   ├── overlap.js              # Calendar engine (rendering, ICS parsing, PWA)
-│   ├── overlap.css             # Base calendar styles
+│   ├── overlap.js              # Calendar engine (rendering, ICS parsing, PWA, weather, absences)
+│   ├── overlap.css             # Base calendar styles (incl. weather floats, absence styles)
 │   ├── blockery.css            # Blockery theme marker (styles embedded in overlap.css)
 │   ├── softy.css               # Softy theme marker (styles embedded in overlap.css)
 │   ├── nova.css                # Nova dark theme — full standalone overrides
+│   ├── sketchy.css             # Sketchy hand-drawn theme
+│   ├── mono.css                # Mono high-contrast B&W theme
+│   ├── weather.php             # Server-side Open-Meteo proxy (92-day cache, stale fallback)
+│   ├── weather-icons.css       # Weather Icons 2.0.10 library (webfont-based)
+│   ├── fonts/
+│   │   └── weathericons-regular-webfont.woff2  # Weather icon webfont (SIL OFL 1.1)
 │   ├── overlap-config.js       # Live config (generated; do not edit by hand)
 │   ├── overlap-manifest.json   # PWA manifest (auto-generated from branding)
-│   ├── proxy.php               # Server-side ICS proxy and short cache
+│   ├── proxy.php               # Server-side ICS proxy and short cache (?refresh=1 to bypass)
 │   ├── icon-192.png            # PWA icon — overwritten on logo upload
 │   └── icon-512.png            # PWA icon — overwritten on logo upload
 ├── manage/
@@ -128,6 +140,7 @@ overlap/
 │   ├── volunteers.php          # Crew management
 │   ├── schedule.php            # Schedule settings + important dates + ICS import
 │   ├── display.php             # Branding + display settings + logo upload
+│   ├── admin.js                # Management panel JavaScript
 │   ├── api.php                 # AJAX endpoint (calendar test, etc.)
 │   ├── _header.php             # Shared nav header (mobile-responsive drawer)
 │   └── _footer.php             # Shared footer
@@ -136,7 +149,11 @@ overlap/
 │   └── CalendarDiagnostics.php # ICS fetch, parse and health-check
 ├── assets/
 │   ├── css/admin.css           # Admin panel styles
-│   └── js/admin.js             # Admin panel JS (crew sort, calendar test, toasts)
+│   ├── js/admin.js             # Admin panel JS (crew sort, calendar test, toasts)
+│   └── fonts/
+│       ├── handdrawn-icons.ttf # Handdrawn icon font (Sketchy theme)
+│       └── handdrawn-icons.woff
+├── weather-icons.html          # Weather icon browser / development test page
 └── uploads/
     └── logo.png                # Uploaded logo (source for icon resizing)
 ```
@@ -171,11 +188,23 @@ overlap/
 
 5. **Open `index.php`** — your calendar is live.
 
+### Weather
+
+Weather is enabled by default if `weatherEnabled: true` (or absent) in the config and `weatherLatitude` / `weatherLongitude` are set. The server-side proxy (`app/weather.php`) fetches hourly forecasts from Open-Meteo, caches them in `/tmp` for 30 minutes, and falls back to a stale cache if the upstream is unavailable. No API key required.
+
+To disable weather entirely, add to your config:
+```js
+defaults: {
+  weatherEnabled: false,
+  // ...
+}
+```
+
 ### Proxy
 
 All ICS feeds are fetched server-side through `app/proxy.php`, which:
 - Caches responses briefly (60 seconds)
-- Supports `refresh=1` for explicit/manual refreshes that bypass the local proxy cache
+- Supports `?refresh=1` for explicit/manual refreshes that bypass the local proxy cache
 - Only allows URLs listed in the configuration (no open proxy)
 
 ---
@@ -191,12 +220,13 @@ window.OVERLAP_CONFIG = {
     appShortName:   'MyOrg',
     logoUrl:        'https://example.com/logo.png',
     themeColor:     '#1a3d2b',
-    theme:          'blockery',   // blockery | softy | nova | or any app/*.css filename
+    theme:          'blockery',   // blockery | softy | nova | sketchy | mono | or any app/*.css filename
     // ...
   },
   crew: [
     { name: 'Alice', color: '#52b788' },
     { name: 'Bob',   color: '#5a9fd4', bday: '15-03' },
+    { name: 'Carol', color: '#e07a5f', aliases: ['C.', 'Carolien'] },
     // ...
   ],
   defaults: {
@@ -205,6 +235,9 @@ window.OVERLAP_CONFIG = {
     mainEventCalendarUrl: 'https://calendar.google.com/calendar/ical/…',
     weekStartDay:         1,           // 0 = Sunday, 1 = Monday
     alwaysShowDays:       [0,1,3,4,5,6],
+    weatherEnabled:       true,
+    weatherLatitude:      52.3608,
+    weatherLongitude:     4.9487,
     importantDates: [
       { date: '2026-12-25', label: 'Christmas' },
       { date: '2026-07-01', endDate: '2026-08-31', label: 'Summer vacation' },
@@ -228,7 +261,7 @@ An example file with all options and empty sensitive values is provided at `app/
 
 The **Schedule** admin page lets you define holidays, school vacations and other notable dates that appear as labels on calendar day headers.
 
-- Single day: just set a **From** date and a **Label**
+- Single day: just set a **Label** and a **From** date
 - Date range: set both **From** and **Until**
 
 You can also **import an `.ics` file** (e.g. a national holiday calendar or school vacation feed). The importer:
@@ -265,11 +298,11 @@ Clicking the hamburger icon opens a slide-in drawer available on all screen size
 | Install | Install as PWA; on iPhone/iPad the button shows Safari Add to Home Screen instructions |
 | Afdrukken | Landscape or portrait print |
 | Delen | Share as image / copy link |
-| Instellingen | Theme, week start day |
+| Instellingen | Theme, week start day, weather icon toggle, temperature toggle |
 | Automatisch vernieuwen | 5 / 15 / 30 / 60 min or off — stored per-user in a cookie |
 | Footer | App version, author link, manage link |
 
-Theme and week-start changes trigger a page reload to apply. The refresh interval is applied instantly without reloading.
+Theme and week-start changes trigger a page reload to apply. The refresh interval and weather toggles are applied instantly without reloading.
 
 ---
 
